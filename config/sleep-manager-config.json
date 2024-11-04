@@ -1,0 +1,17 @@
+{
+    "SECRET_KEY": "",
+    "domain": "localdomain",
+    "port": 51339,
+    "request_timeout": 4,
+    "waker": {
+        "name": "",
+        "wol_exec": "/usr/sbin/etherwake"
+    },
+    "sleeper": {
+        "name": "",
+        "mac": "",
+        "systemctl_exec": "/usr/bin/systemctl",
+        "suspend_verb": "hybrid-sleep",
+        "status_verb": "is-system-running"
+    }
+}
