@@ -33,3 +33,12 @@ coverage.xml
 
 # Translations
 *.mo
+
+# virtual environment
+venv
+
+# vscode
+.vscode
+
+# macos
+.DS_Store

@@ -1,0 +1,19 @@
+{
+    "COMMON": {
+        "domain": "localdomain",
+        "port": 51339,
+        "default_request_timeout": 4,
+        "api_key": "1234567890"
+    },
+    "WAKER": {
+        "name": "brouwer",
+        "wol_exec": "/usr/sbin/etherwake"
+    },
+    "SLEEPER": {
+        "name": "monteverdi",
+        "mac": "30:9c:23:1a:e8:e9",
+        "systemctl_exec": "/usr/bin/systemctl",
+        "suspend_verb": "suspend",
+        "status_verb": "is-system-running"
+    }
+}
