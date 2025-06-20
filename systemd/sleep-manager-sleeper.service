@@ -1,0 +1,31 @@
+[Unit]
+Description=Sleep Manager Sleeper Service
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=sleep-manager
+Group=sleep-manager
+WorkingDirectory=/usr/local/sleep-manager
+Environment=FLASK_APP=sleep-manager
+Environment=FLASK_ENV=production
+ExecStart=/usr/local/sleep-manager/venv/bin/python -m flask run --host=0.0.0.0 --port=51339
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/usr/local/sleep-manager
+
+# Allow systemctl commands
+ExecStartPre=/bin/systemctl is-system-running
+ExecStartPre=/bin/systemctl is-system-running
+
+[Install]
+WantedBy=multi-user.target 

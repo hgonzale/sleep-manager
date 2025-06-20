@@ -1,11 +1,8 @@
-from flask import Flask, json, request, abort, current_app, jsonify
+from flask import request, current_app
 from functools import wraps
 import logging
 import subprocess
 from typing import Any, Optional
-from .waker import waker_bp
-from .sleeper import sleeper_bp
-
 
 # Configure logging
 logging.basicConfig(
@@ -74,6 +71,21 @@ def handle_error(error: Exception) -> tuple[dict, int]:
 
 
 def require_api_key(f):
+    """Decorator to require API key authentication for protected endpoints.
+    
+    This decorator checks for the presence of a valid API key in the request headers.
+    The API key must be provided in the 'X-API-Key' header and must match the
+    configured API_KEY in the application configuration.
+    
+    Args:
+        f: The function to decorate
+        
+    Returns:
+        The decorated function
+        
+    Raises:
+        SleepManagerError: If the API key is missing or invalid (401 status code)
+    """
     @wraps(f)
     def decorated_function(*args, **kwargs):
         api_key = request.headers.get('X-API-Key')
@@ -84,7 +96,17 @@ def require_api_key(f):
 
 
 def check_command_availability(command: str) -> dict[str, Any]:
-    """Check if a system command is available and executable"""
+    """Check if a system command is available and executable.
+    
+    Args:
+        command: The command to check (e.g., 'systemctl', 'etherwake')
+        
+    Returns:
+        A dictionary containing:
+            - available: Boolean indicating if the command is available
+            - path: The full path to the command (if available)
+            - error: Error message if the command is not available
+    """
     try:
         result = subprocess.run(['which', command], capture_output=True, text=True)
         if result.returncode != 0:
@@ -104,67 +126,4 @@ def check_command_availability(command: str) -> dict[str, Any]:
         return {
             'available': False,
             'error': str(e)
-        }
-
-
-def create_app():
-    # create and configure the app
-    app = Flask(__name__, instance_relative_config=False)
-
-    app.config.from_file('config/sleep-manager-config.json', load=json.load, text=True)
-
-    # Register error handlers
-    app.register_error_handler(SleepManagerError, handle_error)
-    app.register_error_handler(Exception, handle_error)
-
-    # Register blueprints with authentication
-    app.register_blueprint(waker_bp)
-    app.register_blueprint(sleeper_bp)
-
-    @app.route('/')
-    def welcome():
-        return 'Welcome to sleep manager!'
-
-    @app.route('/health')
-    def health_check():
-        """Comprehensive health check endpoint"""
-        health_status = {
-            'status': 'healthy',
-            'version': '1.0.0',  # You might want to get this from your package
-            'components': {}
-        }
-
-        # Check configuration
-        try:
-            required_configs = ['DOMAIN', 'PORT', 'API_KEY']
-            missing_configs = [key for key in required_configs if key not in app.config]
-            if missing_configs:
-                health_status['components']['configuration'] = {
-                    'status': 'unhealthy',
-                    'error': f'Missing required configurations: {", ".join(missing_configs)}'
-                }
-            else:
-                health_status['components']['configuration'] = {
-                    'status': 'healthy'
-                }
-        except Exception as e:
-            health_status['components']['configuration'] = {
-                'status': 'unhealthy',
-                'error': str(e)
-            }
-
-        # Check system commands based on role
-        if 'SLEEPER' in app.config:
-            systemctl_cmd = app.config['SLEEPER'].get('systemctl_command', 'systemctl')
-            health_status['components']['systemctl'] = check_command_availability(systemctl_cmd)
-        elif 'WAKER' in app.config:
-            wol_cmd = app.config['WAKER'].get('wol_exec', 'wol')
-            health_status['components']['wol'] = check_command_availability(wol_cmd)
-
-        # Check if any component is unhealthy
-        if any(comp.get('status') == 'unhealthy' for comp in health_status['components'].values()):
-            health_status['status'] = 'unhealthy'
-
-        return jsonify(health_status)
-
-    return app
+        } 

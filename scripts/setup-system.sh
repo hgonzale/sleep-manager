@@ -1,0 +1,667 @@
+#!/bin/bash
+
+# Sleep Manager System Setup Script
+# This script helps configure the system requirements for the sleep manager
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Function to print colored output
+print_status() {
+    echo -e "${GREEN}[INFO]${NC} $1"
+}
+
+print_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+
+print_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+# Function to show usage
+show_usage() {
+    echo "Sleep Manager System Setup Script"
+    echo "================================="
+    echo
+    echo "Usage: $0 <command>"
+    echo
+    echo "Commands:"
+    echo "  sleeper     Setup Sleeper (machine that will be suspended)"
+    echo "  waker       Setup Waker (machine that will wake the sleeper)"
+    echo "  both        Setup Both (if running both services on same machine)"
+    echo "  uninstall-sleeper  Uninstall Sleeper components"
+    echo "  uninstall-waker    Uninstall Waker components"
+    echo "  uninstall-all      Uninstall All components"
+    echo "  update-deps        Update Python dependencies"
+    echo "  status             Show current status"
+    echo "  help               Show this help message"
+    echo
+    echo "Examples:"
+    echo "  $0 sleeper"
+    echo "  $0 waker"
+    echo "  $0 status"
+    echo "  $0 uninstall-all"
+}
+
+# Function to check if command exists
+command_exists() {
+    command -v "$1" >/dev/null 2>&1
+}
+
+# Function to check if running as root
+check_root() {
+    if [[ $EUID -ne 0 ]]; then
+        print_error "This script must be run as root (use sudo)"
+        exit 1
+    fi
+}
+
+# Function to detect system type
+detect_system() {
+    if [[ -f /etc/os-release ]]; then
+        . /etc/os-release
+        OS=$NAME
+        VER=$VERSION_ID
+    else
+        print_error "Cannot detect operating system"
+        exit 1
+    fi
+}
+
+# Function to check hostname resolution
+check_hostname_resolution() {
+    print_status "Checking hostname resolution..."
+    
+    # Check if configuration file exists
+    if [[ ! -f /usr/local/sleep-manager/config/sleep-manager-config.json ]]; then
+        print_warning "Configuration file not found. Skipping hostname resolution check."
+        print_warning "Please configure the application first, then run this check again."
+        return 0
+    fi
+    
+    # Extract hostnames from configuration
+    local waker_hostname=""
+    local sleeper_hostname=""
+    
+    if command_exists jq; then
+        waker_hostname=$(jq -r '.WAKER.name' /usr/local/sleep-manager/config/sleep-manager-config.json 2>/dev/null || echo "")
+        sleeper_hostname=$(jq -r '.SLEEPER.name' /usr/local/sleep-manager/config/sleep-manager-config.json 2>/dev/null || echo "")
+    else
+        # Fallback to grep if jq is not available
+        waker_hostname=$(grep -o '"name": *"[^"]*"' /usr/local/sleep-manager/config/sleep-manager-config.json | head -1 | cut -d'"' -f4 2>/dev/null || echo "")
+        sleeper_hostname=$(grep -o '"name": *"[^"]*"' /usr/local/sleep-manager/config/sleep-manager-config.json | tail -1 | cut -d'"' -f4 2>/dev/null || echo "")
+    fi
+    
+    if [[ -z "$waker_hostname" || -z "$sleeper_hostname" ]]; then
+        print_warning "Could not extract hostnames from configuration file."
+        print_warning "Please ensure the configuration file contains valid WAKER.name and SLEEPER.name values."
+        return 1
+    fi
+    
+    print_status "Checking resolution for waker hostname: $waker_hostname"
+    print_status "Checking resolution for sleeper hostname: $sleeper_hostname"
+    
+    local resolution_issues=0
+    
+    # Check waker hostname resolution
+    if nslookup "$waker_hostname" >/dev/null 2>&1; then
+        print_status "✓ Waker hostname '$waker_hostname' resolves correctly"
+    else
+        print_warning "✗ Waker hostname '$waker_hostname' does not resolve"
+        resolution_issues=$((resolution_issues + 1))
+    fi
+    
+    # Check sleeper hostname resolution
+    if nslookup "$sleeper_hostname" >/dev/null 2>&1; then
+        print_status "✓ Sleeper hostname '$sleeper_hostname' resolves correctly"
+    else
+        print_warning "✗ Sleeper hostname '$sleeper_hostname' does not resolve"
+        resolution_issues=$((resolution_issues + 1))
+    fi
+    
+    # Check connectivity between machines
+    if [[ $resolution_issues -eq 0 ]]; then
+        print_status "Testing connectivity between machines..."
+        
+        # Test ping to sleeper from waker (if this is the waker machine)
+        if ping -c 1 "$sleeper_hostname" >/dev/null 2>&1; then
+            print_status "✓ Can reach sleeper machine ($sleeper_hostname)"
+        else
+            print_warning "✗ Cannot reach sleeper machine ($sleeper_hostname)"
+            print_warning "  This may indicate network connectivity issues"
+        fi
+        
+        # Test ping to waker from sleeper (if this is the sleeper machine)
+        if ping -c 1 "$waker_hostname" >/dev/null 2>&1; then
+            print_status "✓ Can reach waker machine ($waker_hostname)"
+        else
+            print_warning "✗ Cannot reach waker machine ($waker_hostname)"
+            print_warning "  This may indicate network connectivity issues"
+        fi
+    fi
+    
+    if [[ $resolution_issues -gt 0 ]]; then
+        print_warning "Hostname resolution issues detected!"
+        print_warning "To resolve these issues:"
+        print_warning "1. Ensure both machines are on the same network"
+        print_warning "2. Check DNS configuration or add entries to /etc/hosts"
+        print_warning "3. Verify network connectivity between machines"
+        print_warning "4. Ensure hostnames in configuration match actual machine hostnames"
+        return 1
+    else
+        print_status "✓ Hostname resolution is working correctly"
+        return 0
+    fi
+}
+
+# Function to setup sleeper machine
+setup_sleeper() {
+    print_status "Setting up SLEEPER machine..."
+    
+    # Check systemctl
+    if ! command_exists systemctl; then
+        print_error "systemctl not found. This system may not be using systemd."
+        exit 1
+    fi
+    print_status "systemctl found: $(which systemctl)"
+    
+    # Create sleep-manager user and group
+    print_status "Creating sleep-manager user and group..."
+    if ! id "sleep-manager" &>/dev/null; then
+        useradd --system --user-group --shell /bin/false --home-dir /usr/local/sleep-manager sleep-manager
+        print_status "Created sleep-manager user"
+    else
+        print_status "sleep-manager user already exists"
+    fi
+    
+    # Create application directory
+    print_status "Setting up application directory..."
+    mkdir -p /usr/local/sleep-manager
+    cp -r "$PROJECT_DIR"/* /usr/local/sleep-manager/
+    chown -R sleep-manager:sleep-manager /usr/local/sleep-manager
+    chmod 755 /usr/local/sleep-manager
+    
+    # Create and configure virtual environment
+    print_status "Setting up Python virtual environment..."
+    if ! command_exists python3; then
+        print_error "python3 not found. Please install Python 3 first."
+        exit 1
+    fi
+    
+    # Create virtual environment
+    cd /usr/local/sleep-manager
+    python3 -m venv venv
+    chown -R sleep-manager:sleep-manager venv
+    
+    # Install dependencies
+    print_status "Installing Python dependencies..."
+    sudo -u sleep-manager /usr/local/sleep-manager/venv/bin/pip install --upgrade pip
+    sudo -u sleep-manager /usr/local/sleep-manager/venv/bin/pip install -e .
+    
+    print_status "Virtual environment setup complete"
+    
+    # Install systemd delay service
+    print_status "Installing systemd delay service..."
+    cp "$PROJECT_DIR/systemd/sleep-manager-delay.service" /etc/systemd/system/
+    systemctl daemon-reload
+    systemctl enable sleep-manager-delay.service
+    print_status "Systemd delay service installed and enabled"
+    
+    # Install Flask application service
+    print_status "Installing Flask application service..."
+    cp "$PROJECT_DIR/systemd/sleep-manager-sleeper.service" /etc/systemd/system/
+    systemctl daemon-reload
+    systemctl enable sleep-manager-sleeper.service
+    print_status "Flask application service installed and enabled"
+    
+    # Configure Wake-on-LAN
+    print_status "Configuring Wake-on-LAN..."
+    
+    # Find the primary network interface
+    PRIMARY_INTERFACE=$(ip route | grep default | awk '{print $5}' | head -n1)
+    if [[ -z "$PRIMARY_INTERFACE" ]]; then
+        print_warning "Could not detect primary network interface"
+        read -p "Enter network interface name (e.g., eth0, enp0s3): " PRIMARY_INTERFACE
+    fi
+    
+    print_status "Using network interface: $PRIMARY_INTERFACE"
+    
+    # Enable Wake-on-LAN
+    if command_exists ethtool; then
+        ethtool -s "$PRIMARY_INTERFACE" wol g
+        print_status "Wake-on-LAN enabled for $PRIMARY_INTERFACE"
+        
+        # Create systemd-networkd configuration for persistence
+        print_status "Creating systemd-networkd configuration for persistent WoL..."
+        cat > "/etc/systemd/network/25-wol-${PRIMARY_INTERFACE}.network" << EOF
+[Match]
+Name=$PRIMARY_INTERFACE
+
+[Link]
+WakeOnLan=magic
+EOF
+        print_status "Created systemd-networkd configuration for $PRIMARY_INTERFACE"
+        
+        # Restart systemd-networkd to apply changes
+        if systemctl is-active systemd-networkd >/dev/null 2>&1; then
+            print_status "Restarting systemd-networkd to apply WoL configuration..."
+            systemctl restart systemd-networkd
+        fi
+    else
+        print_warning "ethtool not found. Please install it and configure WoL manually."
+    fi
+    
+    print_status "Sleeper setup complete!"
+    print_warning "Don't forget to:"
+    print_warning "1. Configure the application in /usr/local/sleep-manager/config/"
+    print_warning "2. Start the service with: systemctl start sleep-manager-sleeper"
+}
+
+# Function to setup waker machine
+setup_waker() {
+    print_status "Setting up WAKER machine..."
+    
+    # Create sleep-manager user and group
+    print_status "Creating sleep-manager user and group..."
+    if ! id "sleep-manager" &>/dev/null; then
+        useradd --system --user-group --shell /bin/false --home-dir /usr/local/sleep-manager sleep-manager
+        print_status "Created sleep-manager user"
+    else
+        print_status "sleep-manager user already exists"
+    fi
+    
+    # Create application directory
+    print_status "Setting up application directory..."
+    mkdir -p /usr/local/sleep-manager
+    cp -r "$PROJECT_DIR"/* /usr/local/sleep-manager/
+    chown -R sleep-manager:sleep-manager /usr/local/sleep-manager
+    chmod 755 /usr/local/sleep-manager
+    
+    # Create and configure virtual environment
+    print_status "Setting up Python virtual environment..."
+    if ! command_exists python3; then
+        print_error "python3 not found. Please install Python 3 first."
+        exit 1
+    fi
+    
+    # Create virtual environment
+    cd /usr/local/sleep-manager
+    python3 -m venv venv
+    chown -R sleep-manager:sleep-manager venv
+    
+    # Install dependencies
+    print_status "Installing Python dependencies..."
+    sudo -u sleep-manager /usr/local/sleep-manager/venv/bin/pip install --upgrade pip
+    sudo -u sleep-manager /usr/local/sleep-manager/venv/bin/pip install -e .
+    
+    print_status "Virtual environment setup complete"
+    
+    # Install Flask application service
+    print_status "Installing Flask application service..."
+    cp "$PROJECT_DIR/systemd/sleep-manager-waker.service" /etc/systemd/system/
+    systemctl daemon-reload
+    systemctl enable sleep-manager-waker.service
+    print_status "Flask application service installed and enabled"
+    
+    # Install etherwake
+    if ! command_exists etherwake; then
+        print_status "Installing etherwake..."
+        if command_exists apt-get; then
+            apt-get update
+            apt-get install -y etherwake
+        elif command_exists yum; then
+            yum install -y etherwake
+        elif command_exists dnf; then
+            dnf install -y etherwake
+        else
+            print_warning "Could not install etherwake automatically. Please install it manually."
+        fi
+    fi
+    
+    if command_exists etherwake; then
+        print_status "etherwake found: $(which etherwake)"
+    else
+        print_warning "etherwake not found. Please install it manually."
+    fi
+    
+    print_status "Waker setup complete!"
+    print_warning "Don't forget to:"
+    print_warning "1. Configure the application in /usr/local/sleep-manager/config/"
+    print_warning "2. Start the service with: systemctl start sleep-manager-waker"
+}
+
+# Function to update dependencies
+update_dependencies() {
+    print_status "Updating Python dependencies..."
+    
+    if [[ ! -d /usr/local/sleep-manager/venv ]]; then
+        print_error "Virtual environment not found. Please run setup first."
+        exit 1
+    fi
+    
+    cd /usr/local/sleep-manager
+    sudo -u sleep-manager /usr/local/sleep-manager/venv/bin/pip install --upgrade pip
+    sudo -u sleep-manager /usr/local/sleep-manager/venv/bin/pip install -e . --upgrade
+    
+    print_status "Dependencies updated successfully!"
+}
+
+# Function to uninstall sleeper components
+uninstall_sleeper() {
+    print_status "Uninstalling SLEEPER components..."
+    
+    # Stop and disable Flask application service
+    if systemctl is-enabled sleep-manager-sleeper.service >/dev/null 2>&1; then
+        print_status "Stopping and disabling Flask application service..."
+        systemctl stop sleep-manager-sleeper.service
+        systemctl disable sleep-manager-sleeper.service
+    fi
+    
+    # Remove Flask application service file
+    if [[ -f /etc/systemd/system/sleep-manager-sleeper.service ]]; then
+        print_status "Removing Flask application service file..."
+        rm /etc/systemd/system/sleep-manager-sleeper.service
+        systemctl daemon-reload
+    fi
+    
+    # Stop and disable systemd delay service
+    if systemctl is-enabled sleep-manager-delay.service >/dev/null 2>&1; then
+        print_status "Stopping and disabling systemd delay service..."
+        systemctl stop sleep-manager-delay.service
+        systemctl disable sleep-manager-delay.service
+    fi
+    
+    # Remove systemd service file
+    if [[ -f /etc/systemd/system/sleep-manager-delay.service ]]; then
+        print_status "Removing systemd service file..."
+        rm /etc/systemd/system/sleep-manager-delay.service
+        systemctl daemon-reload
+    fi
+    
+    # Remove systemd-networkd configuration files
+    print_status "Removing systemd-networkd WoL configurations..."
+    for config_file in /etc/systemd/network/25-wol-*.network; do
+        if [[ -f "$config_file" ]]; then
+            print_status "Removing $config_file..."
+            rm "$config_file"
+        fi
+    done
+    
+    # Restart systemd-networkd if it's running
+    if systemctl is-active systemd-networkd >/dev/null 2>&1; then
+        print_status "Restarting systemd-networkd..."
+        systemctl restart systemd-networkd
+    fi
+    
+    # Disable Wake-on-LAN on network interfaces
+    print_status "Disabling Wake-on-LAN on network interfaces..."
+    for interface in $(ls /sys/class/net/ | grep -v lo); do
+        if command_exists ethtool; then
+            ethtool -s "$interface" wol d 2>/dev/null || true
+        fi
+    done
+    
+    print_status "Sleeper uninstall complete!"
+}
+
+# Function to uninstall waker components
+uninstall_waker() {
+    print_status "Uninstalling WAKER components..."
+    
+    # Stop and disable Flask application service
+    if systemctl is-enabled sleep-manager-waker.service >/dev/null 2>&1; then
+        print_status "Stopping and disabling Flask application service..."
+        systemctl stop sleep-manager-waker.service
+        systemctl disable sleep-manager-waker.service
+    fi
+    
+    # Remove Flask application service file
+    if [[ -f /etc/systemd/system/sleep-manager-waker.service ]]; then
+        print_status "Removing Flask application service file..."
+        rm /etc/systemd/system/sleep-manager-waker.service
+        systemctl daemon-reload
+    fi
+    
+    # Remove etherwake if it was installed by this script
+    if command_exists etherwake; then
+        print_warning "etherwake is still installed. To remove it, run:"
+        if command_exists apt-get; then
+            print_warning "  sudo apt-get remove etherwake"
+        elif command_exists yum; then
+            print_warning "  sudo yum remove etherwake"
+        elif command_exists dnf; then
+            print_warning "  sudo dnf remove etherwake"
+        fi
+    fi
+    
+    print_status "Waker uninstall complete!"
+}
+
+# Function to uninstall all components
+uninstall_all() {
+    print_status "Uninstalling ALL components..."
+    
+    uninstall_sleeper
+    uninstall_waker
+    
+    # Note: Application directory and virtual environment are preserved
+    # This allows for easy reinstallation without losing configuration
+    
+    if id "sleep-manager" &>/dev/null; then
+        print_status "Removing sleep-manager user..."
+        userdel sleep-manager
+    fi
+    
+    print_status "Complete uninstall finished!"
+    print_warning "Application files in /usr/local/sleep-manager have been preserved."
+    print_warning "To reinstall, run the setup script again."
+}
+
+# Function to verify setup
+verify_setup() {
+    print_status "Verifying setup..."
+    
+    # Check systemctl (for sleeper)
+    if command_exists systemctl; then
+        print_status "✓ systemctl available"
+        
+        # Check if delay service is enabled
+        if systemctl is-enabled sleep-manager-delay.service >/dev/null 2>&1; then
+            print_status "✓ Systemd delay service enabled"
+        else
+            print_warning "✗ Systemd delay service not enabled"
+        fi
+    fi
+    
+    # Check etherwake (for waker)
+    if command_exists etherwake; then
+        print_status "✓ etherwake available"
+    else
+        print_warning "✗ etherwake not available"
+    fi
+    
+    # Check network connectivity
+    print_status "Checking network connectivity..."
+    if ping -c 1 8.8.8.8 >/dev/null 2>&1; then
+        print_status "✓ Internet connectivity available"
+    else
+        print_warning "✗ No internet connectivity"
+    fi
+    
+    # Check hostname resolution
+    check_hostname_resolution
+}
+
+# Function to show current status
+show_status() {
+    print_status "Current Sleep Manager Status"
+    print_status "============================"
+    
+    # Check Flask application services
+    if systemctl is-enabled sleep-manager-sleeper.service >/dev/null 2>&1; then
+        print_status "✓ Sleep Manager Sleeper Service: ENABLED"
+        if systemctl is-active sleep-manager-sleeper.service >/dev/null 2>&1; then
+            print_status "  Status: ACTIVE"
+        else
+            print_warning "  Status: INACTIVE"
+        fi
+    elif systemctl is-enabled sleep-manager-waker.service >/dev/null 2>&1; then
+        print_status "✓ Sleep Manager Waker Service: ENABLED"
+        if systemctl is-active sleep-manager-waker.service >/dev/null 2>&1; then
+            print_status "  Status: ACTIVE"
+        else
+            print_warning "  Status: INACTIVE"
+        fi
+    else
+        print_warning "✗ Sleep Manager Flask Services: NOT ENABLED"
+    fi
+    
+    # Check systemd delay service
+    if systemctl is-enabled sleep-manager-delay.service >/dev/null 2>&1; then
+        print_status "✓ Systemd delay service: ENABLED"
+        if systemctl is-active sleep-manager-delay.service >/dev/null 2>&1; then
+            print_status "  Status: ACTIVE"
+        else
+            print_warning "  Status: INACTIVE"
+        fi
+    else
+        print_warning "✗ Systemd delay service: NOT ENABLED"
+    fi
+    
+    # Check systemd-networkd configuration files
+    wol_configs=$(ls /etc/systemd/network/25-wol-*.network 2>/dev/null || true)
+    if [[ -n "$wol_configs" ]]; then
+        print_status "✓ WoL systemd-networkd configurations: INSTALLED"
+        for config in $wol_configs; do
+            print_status "  $(basename "$config")"
+        done
+    else
+        print_warning "✗ WoL systemd-networkd configuration: NOT INSTALLED"
+    fi
+    
+    # Check etherwake
+    if command_exists etherwake; then
+        print_status "✓ etherwake: INSTALLED ($(which etherwake))"
+    else
+        print_warning "✗ etherwake: NOT INSTALLED"
+    fi
+    
+    # Check application directory
+    if [[ -d /usr/local/sleep-manager ]]; then
+        print_status "✓ Application directory: INSTALLED (/usr/local/sleep-manager)"
+    else
+        print_warning "✗ Application directory: NOT INSTALLED"
+    fi
+    
+    # Check sleep-manager user
+    if id "sleep-manager" &>/dev/null; then
+        print_status "✓ sleep-manager user: EXISTS"
+    else
+        print_warning "✗ sleep-manager user: NOT EXISTS"
+    fi
+    
+    # Check Wake-on-LAN status on network interfaces
+    print_status "Wake-on-LAN status on network interfaces:"
+    for interface in $(ls /sys/class/net/ | grep -v lo); do
+        if command_exists ethtool; then
+            wol_status=$(ethtool "$interface" 2>/dev/null | grep -i "Wake-on" | head -n1 || echo "Unknown")
+            print_status "  $interface: $wol_status"
+        fi
+    done
+    
+    # Check hostname resolution
+    echo
+    check_hostname_resolution
+}
+
+# Main script
+main() {
+    # Check if no arguments provided
+    if [[ $# -eq 0 ]]; then
+        show_usage
+        exit 1
+    fi
+    
+    # Parse command line arguments
+    case "$1" in
+        sleeper)
+            check_root
+            detect_system
+            print_status "Detected system: $OS $VER"
+            setup_sleeper
+            verify_setup
+            echo
+            print_status "Setup complete!"
+            print_warning "Please review SYSTEM_REQUIREMENTS.md for additional manual configuration steps."
+            print_warning "Don't forget to configure Wake-on-LAN in your BIOS/UEFI settings!"
+            ;;
+        waker)
+            check_root
+            detect_system
+            print_status "Detected system: $OS $VER"
+            setup_waker
+            verify_setup
+            echo
+            print_status "Setup complete!"
+            print_warning "Please review SYSTEM_REQUIREMENTS.md for additional manual configuration steps."
+            ;;
+        both)
+            check_root
+            detect_system
+            print_status "Detected system: $OS $VER"
+            setup_sleeper
+            setup_waker
+            verify_setup
+            echo
+            print_status "Setup complete!"
+            print_warning "Please review SYSTEM_REQUIREMENTS.md for additional manual configuration steps."
+            print_warning "Don't forget to configure Wake-on-LAN in your BIOS/UEFI settings!"
+            ;;
+        uninstall-sleeper)
+            check_root
+            uninstall_sleeper
+            echo
+            print_status "Uninstall complete!"
+            ;;
+        uninstall-waker)
+            check_root
+            uninstall_waker
+            echo
+            print_status "Uninstall complete!"
+            ;;
+        uninstall-all)
+            check_root
+            uninstall_all
+            echo
+            print_status "Uninstall complete!"
+            ;;
+        update-deps)
+            check_root
+            update_dependencies
+            ;;
+        status)
+            show_status
+            ;;
+        help|--help|-h)
+            show_usage
+            ;;
+        *)
+            print_error "Unknown command: $1"
+            echo
+            show_usage
+            exit 1
+            ;;
+    esac
+}
+
+# Run main function
+main "$@" 

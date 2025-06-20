@@ -1,0 +1,13 @@
+[Unit]
+Description=Sleep Manager Suspend Delay
+Before=sleep.target
+StopWhenUnneeded=yes
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/sleep 5
+ExecStop=/bin/true
+
+[Install]
+WantedBy=sleep.target 
