@@ -206,8 +206,8 @@ setup_sleeper() {
     mkdir -p /usr/local/sleep-manager/config
     
     # Copy example configuration file if it exists
-    if [[ -f "$PROJECT_DIR/sleep_manager/config/sleep-manager-config.json.example" ]]; then
-        cp "$PROJECT_DIR/sleep_manager/config/sleep-manager-config.json.example" /usr/local/sleep-manager/config/sleep-manager-config.json.example
+    if [[ -f "$PROJECT_DIR/config/sleep-manager-config.json.example" ]]; then
+        cp "$PROJECT_DIR/config/sleep-manager-config.json.example" /usr/local/sleep-manager/config/sleep-manager-config.json.example
         print_status "Copied example configuration file to /usr/local/sleep-manager/config/"
         print_warning "Please edit /usr/local/sleep-manager/config/sleep-manager-config.json.example and rename it to sleep-manager-config.json"
     else

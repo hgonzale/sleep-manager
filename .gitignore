@@ -1,5 +1,5 @@
 # config
-sleep_manager/config/sleep-manager-config.json
+config/sleep-manager-config.json
 
 # Sphinx documentation build and temp files
 /docs/_build/

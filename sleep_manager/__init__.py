@@ -39,7 +39,8 @@ def create_app():
     # create and configure the app
     app = Flask(__name__, instance_relative_config=False)
 
-    app.config.from_file('config/sleep-manager-config.json', load=json.load, text=True)
+    app.config.from_file('/usr/local/sleep-manager/config/sleep-manager-config.json', load=json.load, text=True)
+    logger.info(f"Loaded config: {app.config.get('SLEEPER')}")
 
     # Register error handlers
     app.register_error_handler(SleepManagerError, handle_error)

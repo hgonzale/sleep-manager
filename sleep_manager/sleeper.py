@@ -26,7 +26,7 @@ def print_config() -> dict[str, Any]:
             return str(obj)
         return obj
 
-    config = deepcopy(dict(current_app.config))
+    config: dict[str, Any] = deepcopy(dict(current_app.config))
     # Hide API key
     if 'API_KEY' in config:
         config['API_KEY'] = '***hidden***'
