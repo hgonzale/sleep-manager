@@ -201,6 +201,19 @@ setup_sleeper() {
         fi
     done
     
+    # Setup configuration directory
+    print_status "Setting up configuration directory..."
+    mkdir -p /usr/local/sleep-manager/config
+    
+    # Copy example configuration file if it exists
+    if [[ -f "$PROJECT_DIR/sleep_manager/config/sleep-manager-config.json.example" ]]; then
+        cp "$PROJECT_DIR/sleep_manager/config/sleep-manager-config.json.example" /usr/local/sleep-manager/config/sleep-manager-config.json.example
+        print_status "Copied example configuration file to /usr/local/sleep-manager/config/"
+        print_warning "Please edit /usr/local/sleep-manager/config/sleep-manager-config.json.example and rename it to sleep-manager-config.json"
+    else
+        print_warning "Example configuration file not found. Please create /usr/local/sleep-manager/config/sleep-manager-config.json manually."
+    fi
+    
     chown -R sleep-manager:sleep-manager /usr/local/sleep-manager
     chmod 755 /usr/local/sleep-manager
     
@@ -219,7 +232,7 @@ setup_sleeper() {
     # Install dependencies
     print_status "Installing Python dependencies..."
     sudo -u sleep-manager /usr/local/sleep-manager/venv/bin/pip install --upgrade pip
-    sudo -u sleep-manager /usr/local/sleep-manager/venv/bin/pip install -e .
+    sudo -u sleep-manager /usr/local/sleep-manager/venv/bin/pip install flask>=2.3.0 requests>=2.31.0
     
     print_status "Virtual environment setup complete"
     
@@ -447,7 +460,7 @@ update_dependencies() {
     
     cd /usr/local/sleep-manager
     sudo -u sleep-manager /usr/local/sleep-manager/venv/bin/pip install --upgrade pip
-    sudo -u sleep-manager /usr/local/sleep-manager/venv/bin/pip install -e . --upgrade
+    sudo -u sleep-manager /usr/local/sleep-manager/venv/bin/pip install flask>=2.3.0 requests>=2.31.0 --upgrade
     
     print_status "Dependencies updated successfully!"
 }

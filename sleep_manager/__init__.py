@@ -97,7 +97,7 @@ def create_app():
                 # Check if we have sleeper config
                 if 'SLEEPER' in current_app.config:
                     role = 'sleeper'
-                    required_keys = ['name', 'mac_address', 'suspend_exec']
+                    required_keys = ['name', 'mac_address', 'suspend_verb']
                     for key in required_keys:
                         if key not in current_app.config['SLEEPER']:
                             config_errors.append(f"Missing SLEEPER.{key}")

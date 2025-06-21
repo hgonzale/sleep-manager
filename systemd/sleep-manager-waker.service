@@ -8,7 +8,8 @@ Type=simple
 User=sleep-manager
 Group=sleep-manager
 WorkingDirectory=/usr/local/sleep-manager
-Environment=FLASK_APP=sleep-manager
+# Use the Flask app factory pattern
+Environment=FLASK_APP=sleep_manager:create_app
 Environment=FLASK_ENV=production
 ExecStart=/usr/local/sleep-manager/venv/bin/python -m flask run --host=0.0.0.0 --port=51339
 Restart=always
