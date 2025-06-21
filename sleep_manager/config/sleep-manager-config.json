@@ -1,0 +1,17 @@
+{
+    "DOMAIN": "localdomain",
+    "PORT": 51339,
+    "DEFAULT_REQUEST_TIMEOUT": 4,
+    "API_KEY": "your-secure-api-key-here",
+    "WAKER": {
+        "name": "waker_url",
+        "wol_exec": "/usr/sbin/etherwake"
+    },
+    "SLEEPER": {
+        "name": "sleeper_url",
+        "mac_address": "aa:bb:cc:dd:ee:ff",
+        "systemctl_exec": "/usr/bin/systemctl",
+        "suspend_verb": "suspend",
+        "status_verb": "is-system-running"
+    }
+} 

@@ -485,7 +485,7 @@ verify_setup() {
     fi
     
     # Check hostname resolution
-    check_hostname_resolution
+    check_hostname_resolution || print_warning "Hostname resolution check failed or returned warnings"
 }
 
 # Function to show current status
@@ -566,13 +566,13 @@ show_status() {
     # Check Wake-on-LAN status on network interfaces
     print_status "Wake-on-LAN status on network interfaces:"
     for interface in $(ls /sys/class/net/ | grep -v lo); do
-        wol_status=$(check_wol_status "$interface")
+        wol_status=$(check_wol_status "$interface" 2>/dev/null)
         print_status "  $interface: $wol_status"
     done
     
     # Check hostname resolution
     echo
-    check_hostname_resolution
+    check_hostname_resolution || print_warning "Hostname resolution check failed or returned warnings"
 }
 
 # Function to check Wake-on-LAN status using multiple methods
@@ -615,7 +615,7 @@ check_wol_status() {
     fi
 
     echo "Wake-on: unknown status"
-    return 1
+    return 0
 }
 
 # Function to check if ethtool is available with better path handling

@@ -42,7 +42,8 @@ class TestIntegration:
         assert response.status_code == 200
         data = response.get_json()
         assert 'status' in data
-        assert 'components' in data
+        assert 'config' in data
+        assert 'commands' in data
 
     def test_welcome_endpoint(self, client):
         """Test the welcome endpoint."""
@@ -140,12 +141,14 @@ class TestConfiguration:
         """Test application with missing API key."""
         app = create_app()
         app.config['TESTING'] = True
-        # Missing API_KEY
-        
-        with pytest.raises(KeyError):
-            with app.app_context():
-                from sleep_manager import require_api_key
-                # This would fail when trying to access current_app.config['API_KEY']
+        # Remove API_KEY if present
+        if 'API_KEY' in app.config:
+            del app.config['API_KEY']
+        client = app.test_client()
+        # Call a protected endpoint
+        response = client.get('/sleeper/config', headers={'X-API-Key': 'test-api-key'})
+        # Should return 500 (or 401, depending on your error handling)
+        assert response.status_code in (401, 500)
 
     def test_complete_configuration(self):
         """Test application with complete configuration."""

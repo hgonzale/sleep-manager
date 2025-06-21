@@ -75,62 +75,19 @@ def create_app():
 
     @app.route('/health')
     def health_check():
-        """Comprehensive health check endpoint.
-        
-        This endpoint provides a comprehensive health status of the application
-        and its components. It checks configuration validity and system command
-        availability based on the role (sleeper or waker).
-        
-        **Authentication**: Not required
-        
-        **Response**:
-            A JSON object containing health status information.
-            
-        **Response Format**:
-            .. code-block:: json
-            
-                {
-                    "status": "healthy",
-                    "config": {
-                        "valid": true,
-                        "role": "sleeper",
-                        "errors": []
-                    },
-                    "commands": {
-                        "systemctl": {
-                            "available": true,
-                            "path": "/usr/bin/systemctl"
-                        }
-                    }
-                }
-                
-        **HTTP Status Codes**:
-            - 200: Success (healthy)
-            - 500: Internal Server Error (unhealthy)
-            
-        **Example Usage**:
-            .. code-block:: bash
-                
-                curl http://sleeper_url:51339/health
-                
-        **Example Response**:
-            .. code-block:: json
-            
-                {
-                    "status": "healthy",
-                    "config": {
-                        "valid": true,
-                        "role": "sleeper",
-                        "errors": []
-                    },
-                    "commands": {
-                        "systemctl": {
-                            "available": true,
-                            "path": "/usr/bin/systemctl"
-                        }
-                    }
-                }
-        """
+        """Comprehensive health check endpoint."""
+        def sanitize(obj):
+            if isinstance(obj, dict):
+                return {k: sanitize(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [sanitize(v) for v in obj]
+            elif isinstance(obj, bytes):
+                try:
+                    return obj.decode()
+                except Exception:
+                    return str(obj)
+            return obj
+
         try:
             # Check configuration
             config_errors = []
@@ -173,7 +130,7 @@ def create_app():
             commands_healthy = all(cmd.get('available', False) for cmd in commands.values())
             overall_healthy = config_valid and commands_healthy
             
-            return {
+            result = {
                 'status': 'healthy' if overall_healthy else 'unhealthy',
                 'config': {
                     'valid': config_valid,
@@ -182,7 +139,8 @@ def create_app():
                 },
                 'commands': commands
             }
-            
+            return sanitize(result)
+        
         except Exception as e:
             logger.exception("Health check failed")
             return {

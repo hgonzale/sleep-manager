@@ -4,6 +4,8 @@ import subprocess
 from typing import Any
 import logging
 from .core import require_api_key, ConfigurationError, SystemCommandError
+import datetime
+from copy import deepcopy
 
 logger = logging.getLogger(__name__)
 
@@ -13,66 +15,23 @@ sleeper_bp = Blueprint('sleeper', __name__, url_prefix='/sleeper')
 @sleeper_bp.get('/config')
 @require_api_key
 def print_config() -> dict[str, Any]:
-    """Get sleeper configuration.
-    
-    Returns the current configuration of the sleeper machine. This includes
-    all configuration parameters including the API key (hidden for security).
-    
-    **Authentication**: Required (X-API-Key header)
-    
-    **Response**:
-        A JSON object containing the complete sleeper configuration.
-        
-    **Response Format**:
-        .. code-block:: json
-        
-            {
-                "DOMAIN": "localdomain",
-                "PORT": 51339,
-                "DEFAULT_REQUEST_TIMEOUT": 4,
-                "API_KEY": "***hidden***",
-                "SLEEPER": {
-                    "name": "sleeper_url",
-                    "mac_address": "30:9c:23:1a:e8:e9",
-                    "systemctl_exec": "/usr/bin/systemctl",
-                    "suspend_verb": "suspend",
-                    "status_verb": "is-system-running"
-                }
-            }
-            
-    **HTTP Status Codes**:
-        - 200: Success
-        - 401: Unauthorized (missing or invalid API key)
-        - 500: Internal Server Error (configuration error)
-        
-    **Error Responses**:
-        - 401 Unauthorized: Missing or invalid API key
-        - 500 Internal Server Error: Configuration error
-        
-    **Example Usage**:
-        .. code-block:: bash
-            
-            curl -H "X-API-Key: your-api-key" \
-                 http://sleeper_url:51339/sleeper/config
-                 
-    **Example Response**:
-        .. code-block:: json
-        
-            {
-                "DOMAIN": "localdomain",
-                "PORT": 51339,
-                "DEFAULT_REQUEST_TIMEOUT": 4,
-                "API_KEY": "***hidden***",
-                "SLEEPER": {
-                    "name": "sleeper_url",
-                    "mac_address": "30:9c:23:1a:e8:e9",
-                    "systemctl_exec": "/usr/bin/systemctl",
-                    "suspend_verb": "suspend",
-                    "status_verb": "is-system-running"
-                }
-            }
-    """
-    return current_app.config
+    """Get sleeper configuration (sanitized for JSON serialization and security)."""
+
+    def sanitize(obj):
+        if isinstance(obj, dict):
+            return {k: sanitize(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [sanitize(v) for v in obj]
+        elif isinstance(obj, datetime.timedelta):
+            return str(obj)
+        return obj
+
+    config = deepcopy(dict(current_app.config))
+    # Hide API key
+    if 'API_KEY' in config:
+        config['API_KEY'] = '***hidden***'
+    # Recursively sanitize
+    return sanitize(config)
 
 
 @sleeper_bp.get('/suspend')

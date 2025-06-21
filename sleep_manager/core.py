@@ -3,6 +3,7 @@ from functools import wraps
 import logging
 import subprocess
 from typing import Any, Optional
+from werkzeug.exceptions import NotFound
 
 # Configure logging
 logging.basicConfig(
@@ -49,6 +50,13 @@ class NetworkError(SleepManagerError):
 
 def handle_error(error: Exception) -> tuple[dict, int]:
     """Global error handler for the application"""
+    if isinstance(error, NotFound):
+        return {
+            'error': {
+                'type': 'NotFound',
+                'message': 'The requested URL was not found on the server.'
+            }
+        }, 404
     if isinstance(error, SleepManagerError):
         logger.error(f"{error.__class__.__name__}: {error.message}", extra=error.details)
         return {
@@ -58,7 +66,6 @@ def handle_error(error: Exception) -> tuple[dict, int]:
                 'details': error.details
             }
         }, error.status_code
-    
     # Handle unexpected errors
     logger.exception("Unexpected error occurred")
     return {

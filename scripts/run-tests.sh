@@ -41,6 +41,14 @@ check_venv() {
         print_error "  pip install -e .[dev]"
         exit 1
     fi
+    
+    # Check if pytest is installed
+    if ! "$PROJECT_DIR/venv/bin/python" -c "import pytest" 2>/dev/null; then
+        print_error "pytest not found in virtual environment. Please install dev dependencies:"
+        print_error "  source venv/bin/activate"
+        print_error "  pip install -e .[dev]"
+        exit 1
+    fi
 }
 
 # Function to run tests
@@ -52,21 +60,29 @@ run_tests() {
     
     cd "$PROJECT_DIR"
     
+    # Use the virtual environment's python explicitly
+    local python_cmd="$PROJECT_DIR/venv/bin/python"
+    
     case "$test_type" in
         "unit")
-            python -m pytest tests/test_sleeper.py tests/test_waker.py -v
+            "$python_cmd" -m pytest tests/test_sleeper.py tests/test_waker.py -v
             ;;
         "integration")
-            python -m pytest tests/test_integration.py -v
+            "$python_cmd" -m pytest tests/test_integration.py -v
             ;;
         "all")
-            python -m pytest tests/ -v
+            "$python_cmd" -m pytest tests/ -v
             ;;
         "coverage")
-            python -m pytest tests/ --cov=sleep-manager --cov-report=html --cov-report=term-missing
+            # Check if pytest-cov is available
+            if ! "$python_cmd" -c "import pytest_cov" 2>/dev/null; then
+                print_warning "pytest-cov not found. Installing it..."
+                "$python_cmd" -m pip install pytest-cov
+            fi
+            "$python_cmd" -m pytest tests/ --cov=sleep_manager --cov-report=html --cov-report=term-missing
             ;;
         "quick")
-            python -m pytest tests/ -x -v
+            "$python_cmd" -m pytest tests/ -x -v
             ;;
         *)
             print_error "Unknown test type: $test_type"
