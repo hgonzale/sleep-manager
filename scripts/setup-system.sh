@@ -583,8 +583,8 @@ check_wol_status() {
 
     ethtool_path=$(ethtool_available)
     if [[ -n "$ethtool_path" ]]; then
-        wol_status=$("$ethtool_path" "$interface" 2>/dev/null | grep -i "Wake-on" | head -n1 || echo "Unknown")
-        if [[ "$wol_status" != "Unknown" ]]; then
+        wol_status=$("$ethtool_path" "$interface" 2>/dev/null | grep -i "Wake-on" | head -n1 || echo "")
+        if [[ -n "$wol_status" ]]; then
             echo "$wol_status"
             return 0
         fi
@@ -598,6 +598,18 @@ check_wol_status() {
             return 0
         elif [[ "$wakeup_value" == "disabled" ]]; then
             echo "Wake-on: disabled (sysfs)"
+            return 0
+        fi
+    fi
+
+    # Check if interface supports WoL at all
+    if [[ -d "/sys/class/net/$interface/device" ]]; then
+        if [[ -f "/sys/class/net/$interface/device/power/wakeup" ]] || \
+           [[ -f "/sys/class/net/$interface/device/power/control" ]]; then
+            echo "Wake-on: supported (power management available)"
+            return 0
+        else
+            echo "Wake-on: not supported (no power management)"
             return 0
         fi
     fi
