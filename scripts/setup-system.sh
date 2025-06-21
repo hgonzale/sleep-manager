@@ -209,6 +209,12 @@ setup_sleeper() {
     
     print_status "Virtual environment setup complete"
     
+    if ethtool_available >/dev/null 2>&1; then
+        print_status "ethtool found: $(ethtool_available)"
+    else
+        print_warning "ethtool not found. Please install it manually."
+    fi
+    
     # Install systemd delay service
     print_status "Installing systemd delay service..."
     cp "$PROJECT_DIR/systemd/sleep-manager-delay.service" /etc/systemd/system/
@@ -235,30 +241,24 @@ setup_sleeper() {
     
     print_status "Using network interface: $PRIMARY_INTERFACE"
     
-    # Enable Wake-on-LAN
-    if command_exists ethtool; then
-        ethtool -s "$PRIMARY_INTERFACE" wol g
-        print_status "Wake-on-LAN enabled for $PRIMARY_INTERFACE"
-        
-        # Create systemd-networkd configuration for persistence
-        print_status "Creating systemd-networkd configuration for persistent WoL..."
-        cat > "/etc/systemd/network/25-wol-${PRIMARY_INTERFACE}.network" << EOF
+    # Create systemd-networkd configuration for persistent WoL
+    print_status "Creating systemd-networkd configuration for persistent WoL..."
+    cat > "/etc/systemd/network/25-wol-${PRIMARY_INTERFACE}.network" << EOF
 [Match]
 Name=$PRIMARY_INTERFACE
 
 [Link]
 WakeOnLan=magic
 EOF
-        print_status "Created systemd-networkd configuration for $PRIMARY_INTERFACE"
-        
-        # Restart systemd-networkd to apply changes
-        if systemctl is-active systemd-networkd >/dev/null 2>&1; then
-            print_status "Restarting systemd-networkd to apply WoL configuration..."
-            systemctl restart systemd-networkd
-        fi
-    else
-        print_warning "ethtool not found. Please install it and configure WoL manually."
+    print_status "Created systemd-networkd configuration for $PRIMARY_INTERFACE"
+    
+    # Restart systemd-networkd to apply changes
+    if systemctl is-active systemd-networkd >/dev/null 2>&1; then
+        print_status "Restarting systemd-networkd to apply WoL configuration..."
+        systemctl restart systemd-networkd
     fi
+    
+    print_status "Wake-on-LAN configuration complete (managed by systemd-networkd)"
     
     print_status "Sleeper setup complete!"
     print_warning "Don't forget to:"
@@ -402,14 +402,6 @@ uninstall_sleeper() {
         systemctl restart systemd-networkd
     fi
     
-    # Disable Wake-on-LAN on network interfaces
-    print_status "Disabling Wake-on-LAN on network interfaces..."
-    for interface in $(ls /sys/class/net/ | grep -v lo); do
-        if command_exists ethtool; then
-            ethtool -s "$interface" wol d 2>/dev/null || true
-        fi
-    done
-    
     print_status "Sleeper uninstall complete!"
 }
 
@@ -429,18 +421,6 @@ uninstall_waker() {
         print_status "Removing Flask application service file..."
         rm /etc/systemd/system/sleep-manager-waker.service
         systemctl daemon-reload
-    fi
-    
-    # Remove etherwake if it was installed by this script
-    if command_exists etherwake; then
-        print_warning "etherwake is still installed. To remove it, run:"
-        if command_exists apt-get; then
-            print_warning "  sudo apt-get remove etherwake"
-        elif command_exists yum; then
-            print_warning "  sudo yum remove etherwake"
-        elif command_exists dnf; then
-            print_warning "  sudo dnf remove etherwake"
-        fi
     fi
     
     print_status "Waker uninstall complete!"
@@ -487,6 +467,13 @@ verify_setup() {
         print_status "✓ etherwake available"
     else
         print_warning "✗ etherwake not available"
+    fi
+    
+    # Check ethtool (for sleeper)
+    if ethtool_available >/dev/null 2>&1; then
+        print_status "✓ ethtool available ($(ethtool_available))"
+    else
+        print_warning "✗ ethtool not available"
     fi
     
     # Check network connectivity
@@ -555,6 +542,13 @@ show_status() {
         print_warning "✗ etherwake: NOT INSTALLED"
     fi
     
+    # Check ethtool
+    if ethtool_available >/dev/null 2>&1; then
+        print_status "✓ ethtool: INSTALLED ($(ethtool_available))"
+    else
+        print_warning "✗ ethtool: NOT INSTALLED"
+    fi
+    
     # Check application directory
     if [[ -d /usr/local/sleep-manager ]]; then
         print_status "✓ Application directory: INSTALLED (/usr/local/sleep-manager)"
@@ -572,15 +566,70 @@ show_status() {
     # Check Wake-on-LAN status on network interfaces
     print_status "Wake-on-LAN status on network interfaces:"
     for interface in $(ls /sys/class/net/ | grep -v lo); do
-        if command_exists ethtool; then
-            wol_status=$(ethtool "$interface" 2>/dev/null | grep -i "Wake-on" | head -n1 || echo "Unknown")
-            print_status "  $interface: $wol_status"
-        fi
+        wol_status=$(check_wol_status "$interface")
+        print_status "  $interface: $wol_status"
     done
     
     # Check hostname resolution
     echo
     check_hostname_resolution
+}
+
+# Function to check Wake-on-LAN status using multiple methods
+check_wol_status() {
+    local interface="$1"
+    local wol_status="Unknown"
+    local ethtool_path
+
+    ethtool_path=$(ethtool_available)
+    if [[ -n "$ethtool_path" ]]; then
+        wol_status=$("$ethtool_path" "$interface" 2>/dev/null | grep -i "Wake-on" | head -n1 || echo "Unknown")
+        if [[ "$wol_status" != "Unknown" ]]; then
+            echo "$wol_status"
+            return 0
+        fi
+    fi
+
+    # Fallback: Check sysfs directly
+    if [[ -f "/sys/class/net/$interface/device/power/wakeup" ]]; then
+        local wakeup_value=$(cat "/sys/class/net/$interface/device/power/wakeup" 2>/dev/null || echo "unknown")
+        if [[ "$wakeup_value" == "enabled" ]]; then
+            echo "Wake-on: enabled (sysfs)"
+            return 0
+        elif [[ "$wakeup_value" == "disabled" ]]; then
+            echo "Wake-on: disabled (sysfs)"
+            return 0
+        fi
+    fi
+
+    echo "Wake-on: unknown status"
+    return 1
+}
+
+# Function to check if ethtool is available with better path handling
+ethtool_available() {
+    # Check common locations
+    local ethtool_paths=(
+        "/usr/sbin/ethtool"
+        "/usr/bin/ethtool"
+        "/sbin/ethtool"
+        "/bin/ethtool"
+    )
+    
+    for path in "${ethtool_paths[@]}"; do
+        if [[ -x "$path" ]]; then
+            echo "$path"
+            return 0
+        fi
+    done
+    
+    # Check PATH
+    if command_exists ethtool; then
+        which ethtool
+        return 0
+    fi
+    
+    return 1
 }
 
 # Main script
