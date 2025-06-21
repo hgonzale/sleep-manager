@@ -186,7 +186,21 @@ setup_sleeper() {
     # Create application directory
     print_status "Setting up application directory..."
     mkdir -p /usr/local/sleep-manager
-    cp -r "$PROJECT_DIR"/* /usr/local/sleep-manager/
+    
+    # Copy project files, excluding development-specific directories
+    print_status "Copying project files..."
+    cd "$PROJECT_DIR"
+    for item in *; do
+        # Skip venv, .git, and other development directories
+        if [[ "$item" != "venv" && "$item" != ".git" && "$item" != "__pycache__" && "$item" != "*.pyc" ]]; then
+            if [[ -d "$item" ]]; then
+                cp -r "$item" /usr/local/sleep-manager/
+            else
+                cp "$item" /usr/local/sleep-manager/
+            fi
+        fi
+    done
+    
     chown -R sleep-manager:sleep-manager /usr/local/sleep-manager
     chmod 755 /usr/local/sleep-manager
     
@@ -232,14 +246,81 @@ setup_sleeper() {
     # Configure Wake-on-LAN
     print_status "Configuring Wake-on-LAN..."
     
-    # Find the primary network interface
-    PRIMARY_INTERFACE=$(ip route | grep default | awk '{print $5}' | head -n1)
-    if [[ -z "$PRIMARY_INTERFACE" ]]; then
-        print_warning "Could not detect primary network interface"
-        read -p "Enter network interface name (e.g., eth0, enp0s3): " PRIMARY_INTERFACE
+    # Function to detect Ethernet interfaces
+    detect_ethernet_interfaces() {
+        local ethernet_interfaces=()
+        
+        # Get all network interfaces
+        while IFS= read -r line; do
+            # Extract interface name and type
+            if [[ $line =~ ^[0-9]+:[[:space:]]+([^:]+): ]]; then
+                local iface="${BASH_REMATCH[1]}"
+                
+                # Skip loopback, wireless, bridge, and virtual interfaces
+                if [[ "$iface" != "lo" && 
+                      "$iface" != wl* && 
+                      "$iface" != br-* && 
+                      "$iface" != docker* && 
+                      "$iface" != veth* ]]; then
+                    
+                    # Check if it's an Ethernet interface by looking for ether address
+                    if ip link show "$iface" | grep -q "link/ether"; then
+                        ethernet_interfaces+=("$iface")
+                    fi
+                fi
+            fi
+        done < <(ip link show)
+        
+        echo "${ethernet_interfaces[@]}"
+    }
+    
+    # Detect available Ethernet interfaces
+    print_status "Detecting Ethernet interfaces for Wake-on-LAN..."
+    ethernet_interfaces=($(detect_ethernet_interfaces))
+    
+    if [[ ${#ethernet_interfaces[@]} -eq 0 ]]; then
+        print_warning "No Ethernet interfaces detected!"
+        print_warning "Wake-on-LAN requires an Ethernet interface (WiFi interfaces don't support WoL)."
+        print_warning "Please ensure you have an Ethernet connection available."
+        read -p "Enter Ethernet interface name manually (e.g., eth0, enp0s3): " PRIMARY_INTERFACE
+    elif [[ ${#ethernet_interfaces[@]} -eq 1 ]]; then
+        PRIMARY_INTERFACE="${ethernet_interfaces[0]}"
+        print_status "Found single Ethernet interface: $PRIMARY_INTERFACE"
+    else
+        print_status "Found multiple Ethernet interfaces:"
+        for i in "${!ethernet_interfaces[@]}"; do
+            echo "  $((i+1)). ${ethernet_interfaces[i]}"
+        done
+        
+        while true; do
+            read -p "Select interface for Wake-on-LAN (1-${#ethernet_interfaces[@]}): " choice
+            if [[ "$choice" =~ ^[0-9]+$ && "$choice" -ge 1 && "$choice" -le ${#ethernet_interfaces[@]} ]]; then
+                PRIMARY_INTERFACE="${ethernet_interfaces[$((choice-1))]}"
+                break
+            else
+                print_warning "Invalid selection. Please enter a number between 1 and ${#ethernet_interfaces[@]}."
+            fi
+        done
     fi
     
-    print_status "Using network interface: $PRIMARY_INTERFACE"
+    print_status "Using Ethernet interface for Wake-on-LAN: $PRIMARY_INTERFACE"
+    
+    # Verify the interface exists and is Ethernet
+    if ! ip link show "$PRIMARY_INTERFACE" >/dev/null 2>&1; then
+        print_error "Interface $PRIMARY_INTERFACE does not exist!"
+        exit 1
+    fi
+    
+    if ! ip link show "$PRIMARY_INTERFACE" | grep -q "link/ether"; then
+        print_warning "Interface $PRIMARY_INTERFACE may not be an Ethernet interface."
+        print_warning "Wake-on-LAN typically only works on Ethernet interfaces, not WiFi."
+        read -p "Continue anyway? (y/N): " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            print_status "Wake-on-LAN configuration skipped."
+            return 0
+        fi
+    fi
     
     # Create systemd-networkd configuration for persistent WoL
     print_status "Creating systemd-networkd configuration for persistent WoL..."
@@ -259,6 +340,8 @@ EOF
     fi
     
     print_status "Wake-on-LAN configuration complete (managed by systemd-networkd)"
+    print_warning "Note: Wake-on-LAN must also be enabled in your BIOS/UEFI settings!"
+    print_warning "Look for options like 'Wake on LAN', 'Power on by PCI-E', or 'Resume by LAN'."
     
     print_status "Sleeper setup complete!"
     print_warning "Don't forget to:"
@@ -282,7 +365,21 @@ setup_waker() {
     # Create application directory
     print_status "Setting up application directory..."
     mkdir -p /usr/local/sleep-manager
-    cp -r "$PROJECT_DIR"/* /usr/local/sleep-manager/
+    
+    # Copy project files, excluding development-specific directories
+    print_status "Copying project files..."
+    cd "$PROJECT_DIR"
+    for item in *; do
+        # Skip venv, .git, and other development directories
+        if [[ "$item" != "venv" && "$item" != ".git" && "$item" != "__pycache__" && "$item" != "*.pyc" ]]; then
+            if [[ -d "$item" ]]; then
+                cp -r "$item" /usr/local/sleep-manager/
+            else
+                cp "$item" /usr/local/sleep-manager/
+            fi
+        fi
+    done
+    
     chown -R sleep-manager:sleep-manager /usr/local/sleep-manager
     chmod 755 /usr/local/sleep-manager
     
