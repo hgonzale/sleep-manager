@@ -129,7 +129,7 @@ def wake() -> dict[str, Any]:
         logger.info(f"Attempting to wake {sleeper_name} using {wol_exec} {sleeper_mac}")
 
         # run wake command and get return_code
-        _res = subprocess.run([wol_exec, sleeper_mac], capture_output=True, text=True)
+        _res = subprocess.run(['sudo', wol_exec, sleeper_mac], capture_output=True, text=True)
 
         if _res.returncode != 0:
             raise SystemCommandError(
