@@ -414,19 +414,23 @@ uninstall_sleeper() {
         systemctl daemon-reload
     fi
     
-    # Remove systemd-networkd configuration files
-    print_status "Removing systemd-networkd WoL configurations..."
-    for config_file in /etc/systemd/network/25-wol-*.network; do
-        if [[ -f "$config_file" ]]; then
-            print_status "Removing $config_file..."
-            rm "$config_file"
-        fi
-    done
-    
-    # Restart systemd-networkd if it's running
-    if systemctl is-active systemd-networkd >/dev/null 2>&1; then
-        print_status "Restarting systemd-networkd..."
-        systemctl restart systemd-networkd
+    # Remove nmcli Wake-on-LAN configurations
+    print_status "Removing nmcli Wake-on-LAN configurations..."
+    if command_exists nmcli; then
+        # Find all active connections and disable WoL
+        while IFS=: read -r connection_name device; do
+            if [[ -n "$connection_name" && -n "$device" ]]; then
+                # Check if this connection has WoL enabled
+                wol_setting=$(nmcli -g 802-3-ethernet.wake-on-lan connection show "$connection_name" 2>/dev/null || echo "")
+                if [[ "$wol_setting" == "magic" ]]; then
+                    print_status "Disabling WoL for connection '$connection_name' (device: $device)..."
+                    nmcli connection modify "$connection_name" 802-3-ethernet.wake-on-lan ignore
+                fi
+            fi
+        done < <(nmcli -g NAME,DEVICE connection show --active 2>/dev/null || true)
+        print_status "Wake-on-LAN configurations removed via nmcli"
+    else
+        print_warning "NetworkManager (nmcli) not found. WoL configurations may need manual removal."
     fi
     
     print_status "Sleeper uninstall complete!"
@@ -551,17 +555,6 @@ show_status() {
         print_warning "✗ Systemd delay service: NOT ENABLED"
     fi
     
-    # Check systemd-networkd configuration files
-    wol_configs=$(ls /etc/systemd/network/25-wol-*.network 2>/dev/null || true)
-    if [[ -n "$wol_configs" ]]; then
-        print_status "✓ WoL systemd-networkd configurations: INSTALLED"
-        for config in $wol_configs; do
-            print_status "  $(basename "$config")"
-        done
-    else
-        print_warning "✗ WoL systemd-networkd configuration: NOT INSTALLED"
-    fi
-    
     # Check etherwake
     if command_exists etherwake; then
         print_status "✓ etherwake: INSTALLED ($(which etherwake))"
@@ -590,12 +583,30 @@ show_status() {
         print_warning "✗ sleep-manager user: NOT EXISTS"
     fi
     
-    # Check Wake-on-LAN status on network interfaces
-    print_status "Wake-on-LAN status on network interfaces:"
-    for interface in $(ls /sys/class/net/ | grep -v lo); do
-        wol_status=$(check_wol_status "$interface" 2>/dev/null)
-        print_status "  $interface: $wol_status"
-    done
+    # Check nmcli Wake-on-LAN configurations
+    print_status "NetworkManager Wake-on-LAN configurations:"
+    if command_exists nmcli; then
+        wol_found=false
+        while IFS=: read -r connection_name device; do
+            if [[ -n "$connection_name" && -n "$device" ]]; then
+                wol_setting=$(nmcli -g 802-3-ethernet.wake-on-lan connection show "$connection_name" 2>/dev/null || echo "")
+                if [[ "$wol_setting" == "magic" ]]; then
+                    print_status "✓ '$connection_name' ($device): WoL ENABLED"
+                    wol_found=true
+                elif [[ "$wol_setting" == "ignore" ]]; then
+                    print_status "  '$connection_name' ($device): WoL DISABLED"
+                else
+                    print_status "  '$connection_name' ($device): WoL NOT SET"
+                fi
+            fi
+        done < <(nmcli -g NAME,DEVICE connection show --active 2>/dev/null || true)
+        
+        if [[ "$wol_found" == "false" ]]; then
+            print_warning "✗ No NetworkManager connections with WoL enabled found"
+        fi
+    else
+        print_warning "✗ NetworkManager (nmcli) not found - cannot check WoL configurations"
+    fi
     
     # Check hostname resolution
     echo
