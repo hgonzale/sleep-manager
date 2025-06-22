@@ -1,10 +1,7 @@
-from flask import Flask, json, request, abort, current_app, jsonify
+from flask import Flask, json, current_app
 import logging
-import subprocess
-from typing import Any, Optional
 from .core import (
-    SleepManagerError, ConfigurationError, SystemCommandError, NetworkError,
-    handle_error, require_api_key, check_command_availability
+    SleepManagerError, handle_error, check_command_availability
 )
 from .waker import waker_bp
 from .sleeper import sleeper_bp
@@ -20,16 +17,16 @@ logger = logging.getLogger(__name__)
 
 def create_app():
     """Create and configure the Flask application.
-    
+
     This function creates a Flask application instance, loads configuration,
     registers error handlers, and sets up the API routes.
-    
+
     Returns:
         Flask: The configured Flask application instance
-        
+
     Configuration:
         The app loads configuration from 'config/sleep-manager-config.json'
-        
+
     Routes:
         - GET /: Welcome message
         - GET /health: Health check endpoint
@@ -53,23 +50,23 @@ def create_app():
     @app.route('/')
     def welcome():
         """Welcome endpoint.
-        
+
         Returns a simple welcome message for the Sleep Manager API.
-        
+
         **Authentication**: Not required
-        
+
         **Response**:
             A plain text welcome message.
-            
+
         **Example Response**:
             Welcome to sleep manager!
-            
+
         **HTTP Status Codes**:
             - 200: Success
-            
+
         **Example Usage**:
             .. code-block:: bash
-                
+
                 curl http://sleeper_url:51339/
         """
         return 'Welcome to sleep manager!'
@@ -93,7 +90,7 @@ def create_app():
             # Check configuration
             config_errors = []
             role = None
-            
+
             try:
                 # Check if we have sleeper config
                 if 'SLEEPER' in current_app.config:
@@ -102,7 +99,7 @@ def create_app():
                     for key in required_keys:
                         if key not in current_app.config['SLEEPER']:
                             config_errors.append(f"Missing SLEEPER.{key}")
-                
+
                 # Check if we have waker config
                 if 'WAKER' in current_app.config:
                     if role is None:
@@ -111,26 +108,26 @@ def create_app():
                     for key in required_keys:
                         if key not in current_app.config['WAKER']:
                             config_errors.append(f"Missing WAKER.{key}")
-                
+
                 # Check API key
                 if 'API_KEY' not in current_app.config:
                     config_errors.append("Missing API_KEY")
-                    
+
             except Exception as e:
                 config_errors.append(f"Configuration error: {str(e)}")
-            
+
             # Check command availability based on role
             commands = {}
             if role == 'sleeper':
                 commands['systemctl'] = check_command_availability('systemctl')
             elif role == 'waker':
                 commands['etherwake'] = check_command_availability('etherwake')
-            
+
             # Determine overall health
             config_valid = len(config_errors) == 0
             commands_healthy = all(cmd.get('available', False) for cmd in commands.values())
             overall_healthy = config_valid and commands_healthy
-            
+
             result = {
                 'status': 'healthy' if overall_healthy else 'unhealthy',
                 'config': {
@@ -141,7 +138,7 @@ def create_app():
                 'commands': commands
             }
             return sanitize(result)
-        
+
         except Exception as e:
             logger.exception("Health check failed")
             return {

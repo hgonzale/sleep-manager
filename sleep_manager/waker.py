@@ -1,8 +1,7 @@
 from flask import Blueprint, current_app
-import json
 import requests
 import subprocess
-from typing import Any, Optional
+from typing import Any
 import logging
 from .core import require_api_key, ConfigurationError, SystemCommandError, NetworkError
 from .sleeper import sleeper_url
@@ -16,41 +15,41 @@ waker_bp = Blueprint('waker', __name__, url_prefix='/waker')
 @require_api_key
 def print_config() -> dict[str, Any]:
     """Get waker configuration.
-    
+
     Returns the current configuration of the waker machine. This includes
     waker-specific configuration parameters.
-    
+
     **Authentication**: Required (X-API-Key header)
-    
+
     **Response**:
         A JSON object containing the waker configuration.
-        
+
     **Response Format**:
         .. code-block:: json
-        
+
             {
                 "name": "waker_url",
                 "wol_exec": "/usr/sbin/etherwake"
             }
-            
+
     **HTTP Status Codes**:
         - 200: Success
         - 401: Unauthorized (missing or invalid API key)
         - 500: Internal Server Error (configuration error)
-        
+
     **Error Responses**:
         - 401 Unauthorized: Missing or invalid API key
         - 500 Internal Server Error: Configuration error
-        
+
     **Example Usage**:
         .. code-block:: bash
-            
+
             curl -H "X-API-Key: your-api-key" \
                  http://waker_url:51339/waker/config
-                 
+
     **Example Response**:
         .. code-block:: json
-        
+
             {
                 "name": "waker_url",
                 "wol_exec": "/usr/sbin/etherwake"
@@ -63,19 +62,19 @@ def print_config() -> dict[str, Any]:
 @require_api_key
 def wake() -> dict[str, Any]:
     """Send Wake-on-LAN packet to wake the sleeper machine.
-    
+
     Sends a Wake-on-LAN (WoL) packet to the sleeper machine using the configured
     etherwake command. This will attempt to wake the sleeper machine from a
     suspended state.
-    
+
     **Authentication**: Required (X-API-Key header)
-    
+
     **Response**:
         A JSON object confirming the wake operation and containing command details.
-        
+
     **Response Format**:
         .. code-block:: json
-        
+
             {
                 "op": "wake",
                 "sleeper": {
@@ -89,25 +88,25 @@ def wake() -> dict[str, Any]:
                     "stderr": ""
                 }
             }
-            
+
     **HTTP Status Codes**:
         - 200: Success (wake packet sent)
         - 401: Unauthorized (missing or invalid API key)
         - 500: Internal Server Error (wake command failed)
-        
+
     **Error Responses**:
         - 401 Unauthorized: Missing or invalid API key
         - 500 Internal Server Error: Wake-on-LAN command failed
-        
+
     **Example Usage**:
         .. code-block:: bash
-            
+
             curl -H "X-API-Key: your-api-key" \
                  -X GET http://waker_url:51339/waker/wake
-                 
+
     **Example Response**:
         .. code-block:: json
-        
+
             {
                 "op": "wake",
                 "sleeper": {
@@ -172,18 +171,18 @@ def wake() -> dict[str, Any]:
 @require_api_key
 def suspend() -> dict[str, Any]:
     """Proxy suspend request to the sleeper machine.
-    
+
     Proxies a suspend request to the sleeper machine and returns the response.
     This allows the waker to control the sleeper's suspend operation remotely.
-    
+
     **Authentication**: Required (X-API-Key header)
-    
+
     **Response**:
         A JSON object containing the sleeper's response to the suspend request.
-        
+
     **Response Format**:
         .. code-block:: json
-        
+
             {
                 "op": "suspend",
                 "sleeper_response": {
@@ -198,27 +197,27 @@ def suspend() -> dict[str, Any]:
                     "url": "http://sleeper_url.localdomain:51339/sleeper/suspend"
                 }
             }
-            
+
     **HTTP Status Codes**:
         - 200: Success (sleeper responded successfully)
         - 401: Unauthorized (missing or invalid API key)
         - 408: Request Timeout (sleeper did not respond in time)
         - 503: Service Unavailable (network error communicating with sleeper)
-        
+
     **Error Responses**:
         - 401 Unauthorized: Missing or invalid API key
         - 408 Request Timeout: Sleeper machine did not respond in time
         - 503 Service Unavailable: Network error communicating with sleeper
-        
+
     **Example Usage**:
         .. code-block:: bash
-            
+
             curl -H "X-API-Key: your-api-key" \
                  -X GET http://waker_url:51339/waker/suspend
-                 
+
     **Example Response**:
         .. code-block:: json
-        
+
             {
                 "op": "suspend",
                 "sleeper_response": {
@@ -241,18 +240,18 @@ def suspend() -> dict[str, Any]:
 @require_api_key
 def status() -> dict[str, Any]:
     """Proxy status request to the sleeper machine.
-    
+
     Proxies a status request to the sleeper machine and returns the response.
     This allows the waker to check the sleeper's system status remotely.
-    
+
     **Authentication**: Required (X-API-Key header)
-    
+
     **Response**:
         A JSON object containing the sleeper's response to the status request.
-        
+
     **Response Format**:
         .. code-block:: json
-        
+
             {
                 "op": "status",
                 "sleeper_response": {
@@ -270,27 +269,27 @@ def status() -> dict[str, Any]:
                     "url": "http://sleeper_url.localdomain:51339/sleeper/status"
                 }
             }
-            
+
     **HTTP Status Codes**:
         - 200: Success (sleeper responded successfully)
         - 401: Unauthorized (missing or invalid API key)
         - 408: Request Timeout (sleeper did not respond in time)
         - 503: Service Unavailable (network error communicating with sleeper)
-        
+
     **Error Responses**:
         - 401 Unauthorized: Missing or invalid API key
         - 408 Request Timeout: Sleeper machine did not respond in time
         - 503 Service Unavailable: Network error communicating with sleeper
-        
+
     **Example Usage**:
         .. code-block:: bash
-            
+
             curl -H "X-API-Key: your-api-key" \
                  -X GET http://waker_url:51339/waker/status
-                 
+
     **Example Response**:
         .. code-block:: json
-        
+
             {
                 "op": "status",
                 "sleeper_response": {
@@ -314,13 +313,13 @@ def status() -> dict[str, Any]:
 
 def waker_url() -> str:
     """Generate the waker URL for network communication.
-    
+
     Constructs the full URL for the waker machine based on configuration.
     This is used for self-referencing and potential future features.
-    
+
     Returns:
         str: The complete waker URL (e.g., "http://waker_url.localdomain:51339/waker")
-        
+
     Raises:
         ConfigurationError: If required configuration is missing
     """
@@ -336,28 +335,28 @@ def waker_url() -> str:
 
 def sleeper_request(endpoint: str) -> dict[str, Any]:
     """Make a request to the sleeper machine.
-    
+
     Internal function to make HTTP requests to the sleeper machine. This function
     handles authentication, timeouts, and error handling for sleeper communication.
-    
+
     Args:
         endpoint: The sleeper endpoint to request (e.g., 'status', 'suspend')
-        
+
     Returns:
         dict: The sleeper's response wrapped in a standardized format
-        
+
     Raises:
         NetworkError: If there are network communication issues
         ConfigurationError: If required configuration is missing
-        
+
     **Request Details**:
         - Uses the configured API key for authentication
         - Applies timeout based on DEFAULT_REQUEST_TIMEOUT configuration
         - Handles various network error conditions
-        
+
     **Response Format**:
         .. code-block:: json
-        
+
             {
                 "op": "endpoint_name",
                 "sleeper_response": {
@@ -370,8 +369,8 @@ def sleeper_request(endpoint: str) -> dict[str, Any]:
     """
     try:
         url = sleeper_url()
-        request_timeout = max(current_app.config['DEFAULT_REQUEST_TIMEOUT'], 3.05)  # slightly larger than 3=TCP response window
-
+        # max value 3.05 is slightly larger than 3 (TCP response window)
+        request_timeout = max(current_app.config['DEFAULT_REQUEST_TIMEOUT'], 3.05)
         logger.info(f"Making request to sleeper at {url}/{endpoint}")
 
         _res = requests.get(
@@ -380,12 +379,10 @@ def sleeper_request(endpoint: str) -> dict[str, Any]:
             headers={'X-API-Key': current_app.config['API_KEY']}
         )
 
-        _timeout = False
         _json = {}
-        
+
         # Handle response status
         if _res.status_code == 408:
-            _timeout = True
             raise NetworkError("Request to sleeper timed out")
         elif not _res.ok:
             raise NetworkError(

@@ -1,5 +1,4 @@
 import pytest
-import subprocess
 from unittest.mock import patch, MagicMock
 from sleep_manager import create_app
 
@@ -94,7 +93,7 @@ class TestIntegration:
             '/waker/status',
             '/waker/suspend'
         ]
-        
+
         for endpoint in endpoints:
             response = client.get(endpoint)
             assert response.status_code == 401, f"Endpoint {endpoint} should require API key"
@@ -108,7 +107,7 @@ class TestIntegration:
         mock_result.stderr = ""
         mock_result.args = ['/usr/bin/systemctl', 'is-system-running']
         mock_run.return_value = mock_result
-        
+
         response = client.get('/sleeper/status', headers={'X-API-Key': 'test-api-key'})
         assert response.status_code == 200
         data = response.get_json()
@@ -125,7 +124,7 @@ class TestIntegration:
         mock_result.stderr = ""
         mock_result.args = ['/usr/sbin/etherwake', '00:11:22:33:44:55']
         mock_run.return_value = mock_result
-        
+
         response = client.get('/waker/wake', headers={'X-API-Key': 'test-api-key'})
         assert response.status_code == 200
         data = response.get_json()
@@ -169,10 +168,10 @@ class TestConfiguration:
             'name': 'test-waker',
             'wol_exec': '/usr/sbin/etherwake'
         }
-        
+
         # Should not raise any exceptions
         with app.app_context():
             from sleep_manager.sleeper import sleeper_url
             from sleep_manager.waker import waker_url
             sleeper_url()
-            waker_url() 
+            waker_url()

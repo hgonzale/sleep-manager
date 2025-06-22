@@ -20,7 +20,6 @@ KillMode=control-group
 TimeoutStopSec=10
 
 # Security settings
-NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true

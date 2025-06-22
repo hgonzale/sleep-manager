@@ -1,8 +1,8 @@
 import pytest
-import subprocess
 from unittest.mock import patch, MagicMock
 from flask import Flask
-from sleep_manager import create_app, ConfigurationError, SystemCommandError, NetworkError
+from sleep_manager import create_app
+from sleep_manager.core import ConfigurationError, NetworkError
 
 
 @pytest.fixture
@@ -59,7 +59,7 @@ class TestWakerEndpoints:
         mock_result.stderr = ""
         mock_result.args = ['/usr/sbin/etherwake', '00:11:22:33:44:55']
         mock_run.return_value = mock_result
-        
+
         response = client.get('/waker/wake', headers={'X-API-Key': 'test-api-key'})
         assert response.status_code == 200
         data = response.get_json()
@@ -73,7 +73,7 @@ class TestWakerEndpoints:
         mock_result.returncode = 1
         mock_result.stderr = "Permission denied"
         mock_run.return_value = mock_result
-        
+
         response = client.get('/waker/wake', headers={'X-API-Key': 'test-api-key'})
         assert response.status_code == 500
         data = response.get_json()
@@ -90,7 +90,7 @@ class TestWakerEndpoints:
                 'json': {'op': 'suspend'}
             }
         }
-        
+
         response = client.get('/waker/suspend', headers={'X-API-Key': 'test-api-key'})
         assert response.status_code == 200
         data = response.get_json()
@@ -106,7 +106,7 @@ class TestWakerEndpoints:
                 'json': {'op': 'status', 'status': 'running'}
             }
         }
-        
+
         response = client.get('/waker/status', headers={'X-API-Key': 'test-api-key'})
         assert response.status_code == 200
         data = response.get_json()
@@ -122,7 +122,7 @@ class TestWakerConfiguration:
         app.config['TESTING'] = True
         app.config['API_KEY'] = 'test-api-key'
         # Missing WAKER configuration
-        
+
         with app.app_context():
             from sleep_manager.waker import waker_url
             with pytest.raises(ConfigurationError):
@@ -135,7 +135,7 @@ class TestWakerConfiguration:
         app.config['DOMAIN'] = 'test.local'
         app.config['PORT'] = 5000
         app.config['WAKER'] = {'name': 'test-waker'}
-        
+
         with app.app_context():
             from sleep_manager.waker import waker_url
             url = waker_url()
@@ -155,7 +155,7 @@ class TestSleeperRequest:
         mock_response.text = '{"op": "status", "status": "running"}'
         mock_response.url = 'http://test-sleeper.test.local:5000/sleeper/status'
         mock_get.return_value = mock_response
-        
+
         with app.app_context():
             from sleep_manager.waker import sleeper_request
             result = sleeper_request('status')
@@ -167,7 +167,7 @@ class TestSleeperRequest:
         """Test sleeper request timeout."""
         from requests.exceptions import Timeout
         mock_get.side_effect = Timeout("Request timed out")
-        
+
         with app.app_context():
             from sleep_manager.waker import sleeper_request
             with pytest.raises(NetworkError):
@@ -178,8 +178,8 @@ class TestSleeperRequest:
         """Test sleeper request connection error."""
         from requests.exceptions import ConnectionError
         mock_get.side_effect = ConnectionError("Connection failed")
-        
+
         with app.app_context():
             from sleep_manager.waker import sleeper_request
             with pytest.raises(NetworkError):
-                sleeper_request('status') 
+                sleeper_request('status')

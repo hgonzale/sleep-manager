@@ -1,5 +1,4 @@
 from flask import Blueprint, current_app
-import requests
 import subprocess
 from typing import Any
 import logging
@@ -26,60 +25,60 @@ def print_config() -> dict[str, Any]:
             return str(obj)
         return obj
 
-    config: dict[str, Any] = deepcopy(dict(current_app.config))
+    config = deepcopy(dict(current_app.config))
     # Hide API key
     if 'API_KEY' in config:
         config['API_KEY'] = '***hidden***'
     # Recursively sanitize
-    return sanitize(config)
+    return sanitize(config)  # type: ignore
 
 
 @sleeper_bp.get('/suspend')
 @require_api_key
 def suspend() -> dict[str, Any]:
     """Suspend the sleeper machine.
-    
+
     Suspends the sleeper machine using the systemctl suspend command. The system
     will suspend after a short delay to allow the response to be sent. This delay
     is provided by the systemd delay service configured during setup.
-    
+
     **Authentication**: Required (X-API-Key header)
-    
+
     **Response**:
         A JSON object confirming the suspend operation was initiated.
-        
+
     **Response Format**:
         .. code-block:: json
-        
+
             {
                 "op": "suspend",
                 "subprocess": {
                     "args": ["/usr/bin/systemctl", "suspend"]
                 }
             }
-            
+
     **HTTP Status Codes**:
         - 200: Success (suspend initiated)
         - 401: Unauthorized (missing or invalid API key)
         - 500: Internal Server Error (system command failed)
-        
+
     **Error Responses**:
         - 401 Unauthorized: Missing or invalid API key
         - 500 Internal Server Error: System command failed
-        
-    **Note**: 
+
+    **Note**:
         The system will suspend shortly after this response is sent. The response
         may be cut off if the system suspends before it's fully transmitted.
-        
+
     **Example Usage**:
         .. code-block:: bash
-            
+
             curl -H "X-API-Key: your-api-key" \
                  -X GET http://sleeper_url:51339/sleeper/suspend
-                 
+
     **Example Response**:
         .. code-block:: json
-        
+
             {
                 "op": "suspend",
                 "subprocess": {
@@ -91,19 +90,22 @@ def suspend() -> dict[str, Any]:
         systemctl_exec = current_app.config['SLEEPER']['systemctl_command']
         suspend_verb = current_app.config['SLEEPER']['suspend_verb']
 
-        logger.info(f"Attempting to suspend system using {systemctl_exec} {suspend_verb}")
+        logger.info(
+            f"Attempting to suspend system using sudo {systemctl_exec} "
+            f"{suspend_verb}"
+        )
 
         # Once this command is executed, we have a race between the system suspend
         # and Flask responding the request. We assume that systemd-sleep has been
         # added a pre-suspend service with a delay of ~5 secs, so this Flask has
         # enough time to respond.
-        _res = subprocess.Popen([systemctl_exec, suspend_verb])
+        subprocess.Popen(['sudo', systemctl_exec, suspend_verb])
 
         logger.info("Suspend command initiated successfully")
         return {
             'op': 'suspend',
             'subprocess': {
-                'args': [systemctl_exec, suspend_verb],
+                'args': ['sudo', systemctl_exec, suspend_verb],
             }
         }
     except KeyError as e:
@@ -122,19 +124,19 @@ def suspend() -> dict[str, Any]:
 @require_api_key
 def status() -> dict[str, Any]:
     """Get sleeper system status.
-    
+
     Returns the current system status of the sleeper machine using the systemctl
     is-system-running command. This provides information about whether the system
     is running normally, in maintenance mode, starting, or stopping.
-    
+
     **Authentication**: Required (X-API-Key header)
-    
+
     **Response**:
         A JSON object containing the system status and command execution details.
-        
+
     **Response Format**:
         .. code-block:: json
-        
+
             {
                 "op": "status",
                 "status": "running",
@@ -145,31 +147,31 @@ def status() -> dict[str, Any]:
                     "stderr": ""
                 }
             }
-            
+
     **Status Values**:
         - ``running``: System is running normally
         - ``maintenance``: System is in maintenance mode
         - ``stopping``: System is shutting down
         - ``starting``: System is starting up
-        
+
     **HTTP Status Codes**:
         - 200: Success
         - 401: Unauthorized (missing or invalid API key)
         - 500: Internal Server Error (system command failed)
-        
+
     **Error Responses**:
         - 401 Unauthorized: Missing or invalid API key
         - 500 Internal Server Error: System command failed
-        
+
     **Example Usage**:
         .. code-block:: bash
-            
+
             curl -H "X-API-Key: your-api-key" \
                  http://sleeper_url:51339/sleeper/status
-                 
+
     **Example Response**:
         .. code-block:: json
-        
+
             {
                 "op": "status",
                 "status": "running",
@@ -185,10 +187,16 @@ def status() -> dict[str, Any]:
         systemctl_exec = current_app.config['SLEEPER']['systemctl_command']
         status_verb = current_app.config['SLEEPER']['status_verb']
 
-        logger.info(f"Checking system status using {systemctl_exec} {status_verb}")
+        logger.info(
+            f"Checking system status using sudo {systemctl_exec} {status_verb}"
+        )
 
         # run systemd status command
-        _res = subprocess.run([systemctl_exec, status_verb], capture_output=True, text=True)
+        _res = subprocess.run(
+            ['sudo', systemctl_exec, status_verb],
+            capture_output=True,
+            text=True
+        )
 
         if _res.returncode != 0:
             raise SystemCommandError(
@@ -225,13 +233,13 @@ def status() -> dict[str, Any]:
 
 def sleeper_url() -> str:
     """Generate the sleeper URL for network communication.
-    
+
     Constructs the full URL for the sleeper machine based on configuration.
     This is used by the waker to communicate with the sleeper.
-    
+
     Returns:
         str: The complete sleeper URL (e.g., "http://sleeper_url.localdomain:51339/sleeper")
-        
+
     Raises:
         ConfigurationError: If required configuration is missing
     """

@@ -1,8 +1,8 @@
 import pytest
-import subprocess
 from unittest.mock import patch, MagicMock
 from flask import Flask
-from sleep_manager import create_app, ConfigurationError, SystemCommandError
+from sleep_manager import create_app
+from sleep_manager.core import ConfigurationError
 
 
 @pytest.fixture
@@ -51,7 +51,7 @@ class TestSleeperEndpoints:
     def test_suspend_endpoint_success(self, mock_popen, client):
         """Test suspend endpoint with valid API key."""
         mock_popen.return_value = MagicMock()
-        
+
         response = client.get('/sleeper/suspend', headers={'X-API-Key': 'test-api-key'})
         assert response.status_code == 200
         data = response.get_json()
@@ -67,7 +67,7 @@ class TestSleeperEndpoints:
         mock_result.stderr = ""
         mock_result.args = ['/usr/bin/systemctl', 'is-system-running']
         mock_run.return_value = mock_result
-        
+
         response = client.get('/sleeper/status', headers={'X-API-Key': 'test-api-key'})
         assert response.status_code == 200
         data = response.get_json()
@@ -81,7 +81,7 @@ class TestSleeperEndpoints:
         mock_result.returncode = 1
         mock_result.stderr = "Permission denied"
         mock_run.return_value = mock_result
-        
+
         response = client.get('/sleeper/status', headers={'X-API-Key': 'test-api-key'})
         assert response.status_code == 500
         data = response.get_json()
@@ -98,7 +98,7 @@ class TestSleeperConfiguration:
         app.config['TESTING'] = True
         app.config['API_KEY'] = 'test-api-key'
         # Missing SLEEPER configuration
-        
+
         with app.app_context():
             from sleep_manager.sleeper import sleeper_url
             with pytest.raises(ConfigurationError):
@@ -111,8 +111,8 @@ class TestSleeperConfiguration:
         app.config['DOMAIN'] = 'test.local'
         app.config['PORT'] = 5000
         app.config['SLEEPER'] = {'name': 'test-sleeper'}
-        
+
         with app.app_context():
             from sleep_manager.sleeper import sleeper_url
             url = sleeper_url()
-            assert url == 'http://test-sleeper.test.local:5000/sleeper' 
+            assert url == 'http://test-sleeper.test.local:5000/sleeper'

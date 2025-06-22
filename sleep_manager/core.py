@@ -79,17 +79,17 @@ def handle_error(error: Exception) -> tuple[dict, int]:
 
 def require_api_key(f):
     """Decorator to require API key authentication for protected endpoints.
-    
+
     This decorator checks for the presence of a valid API key in the request headers.
     The API key must be provided in the 'X-API-Key' header and must match the
     configured API_KEY in the application configuration.
-    
+
     Args:
         f: The function to decorate
-        
+
     Returns:
         The decorated function
-        
+
     Raises:
         SleepManagerError: If the API key is missing or invalid (401 status code)
     """
@@ -104,10 +104,10 @@ def require_api_key(f):
 
 def check_command_availability(command: str) -> dict[str, Any]:
     """Check if a system command is available and executable.
-    
+
     Args:
         command: The command to check (e.g., 'systemctl', 'etherwake')
-        
+
     Returns:
         A dictionary containing:
             - available: Boolean indicating if the command is available
@@ -121,7 +121,7 @@ def check_command_availability(command: str) -> dict[str, Any]:
                 'available': False,
                 'error': f'Command {command} not found'
             }
-        
+
         # Check if the command is executable
         result = subprocess.run(['test', '-x', result.stdout.strip()], capture_output=True)
         return {
@@ -133,4 +133,4 @@ def check_command_availability(command: str) -> dict[str, Any]:
         return {
             'available': False,
             'error': str(e)
-        } 
+        }
