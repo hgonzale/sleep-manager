@@ -3,7 +3,7 @@ import requests
 import subprocess
 from typing import Any
 import logging
-from .core import require_api_key, ConfigurationError, SystemCommandError, NetworkError
+from .core import require_api_key, ConfigurationError, SystemCommandError
 from .sleeper import sleeper_url
 
 logger = logging.getLogger(__name__)
@@ -343,18 +343,19 @@ def sleeper_request(endpoint: str) -> dict[str, Any]:
         endpoint: The sleeper endpoint to request (e.g., 'status', 'suspend')
 
     Returns:
-        dict: The sleeper's response wrapped in a standardized format
+        dict: The sleeper's response wrapped in a standardized format, or an error
+              response if the sleeper is down/unavailable
 
     Raises:
-        NetworkError: If there are network communication issues
         ConfigurationError: If required configuration is missing
 
     **Request Details**:
         - Uses the configured API key for authentication
         - Applies timeout based on DEFAULT_REQUEST_TIMEOUT configuration
-        - Handles various network error conditions
+        - Handles various network error conditions gracefully
 
     **Response Format**:
+        When sleeper is available:
         .. code-block:: json
 
             {
@@ -365,6 +366,16 @@ def sleeper_request(endpoint: str) -> dict[str, Any]:
                     "text": "...",
                     "url": "http://sleeper_url.localdomain:51339/sleeper/endpoint"
                 }
+            }
+
+        When sleeper is down/unavailable:
+        .. code-block:: json
+
+            {
+                "op": "endpoint_name",
+                "sleeper_status": "down",
+                "error": "Sleeper machine is not reachable",
+                "details": "Request to sleeper timed out"
             }
     """
     try:
@@ -383,12 +394,21 @@ def sleeper_request(endpoint: str) -> dict[str, Any]:
 
         # Handle response status
         if _res.status_code == 408:
-            raise NetworkError("Request to sleeper timed out")
+            logger.warning(f"Request to sleeper timed out for {endpoint}")
+            return {
+                'op': endpoint,
+                'sleeper_status': 'down',
+                'error': 'Sleeper machine is not reachable',
+                'details': 'Request to sleeper timed out'
+            }
         elif not _res.ok:
-            raise NetworkError(
-                f"Sleeper responded with error code {_res.status_code}",
-                details={'response': _res.text}
-            )
+            logger.warning(f"Sleeper responded with error code {_res.status_code} for {endpoint}")
+            return {
+                'op': endpoint,
+                'sleeper_status': 'error',
+                'error': f'Sleeper responded with error code {_res.status_code}',
+                'details': _res.text
+            }
         else:
             _json = _res.json()
 
@@ -403,11 +423,34 @@ def sleeper_request(endpoint: str) -> dict[str, Any]:
             }
         }
     except requests.exceptions.Timeout:
-        logger.error("Request to sleeper timed out")
-        raise NetworkError("Request to sleeper timed out")
+        logger.warning(f"Request to sleeper timed out for {endpoint}")
+        return {
+            'op': endpoint,
+            'sleeper_status': 'down',
+            'error': 'Sleeper machine is not reachable',
+            'details': 'Request to sleeper timed out'
+        }
+    except requests.exceptions.ConnectionError:
+        logger.warning(f"Failed to connect to sleeper for {endpoint}")
+        return {
+            'op': endpoint,
+            'sleeper_status': 'down',
+            'error': 'Sleeper machine is not reachable',
+            'details': 'Connection refused - sleeper may be down or sleeping'
+        }
     except requests.exceptions.RequestException as e:
-        logger.exception("Failed to communicate with sleeper")
-        raise NetworkError(f"Failed to communicate with sleeper: {str(e)}")
+        logger.warning(f"Network error communicating with sleeper for {endpoint}: {str(e)}")
+        return {
+            'op': endpoint,
+            'sleeper_status': 'down',
+            'error': 'Sleeper machine is not reachable',
+            'details': f'Network error: {str(e)}'
+        }
     except Exception as e:
-        logger.exception("Unexpected error during sleeper request")
-        raise NetworkError(f"Unexpected error: {str(e)}")
+        logger.exception(f"Unexpected error during sleeper request for {endpoint}")
+        return {
+            'op': endpoint,
+            'sleeper_status': 'error',
+            'error': 'Unexpected error occurred',
+            'details': str(e)
+        }

@@ -193,7 +193,7 @@ def status() -> dict[str, Any]:
 
         # run systemd status command
         _res = subprocess.run(
-            ['sudo', systemctl_exec, status_verb],
+            [systemctl_exec, status_verb],
             capture_output=True,
             text=True
         )

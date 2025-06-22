@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import patch, MagicMock
 from flask import Flask
 from sleep_manager import create_app
-from sleep_manager.core import ConfigurationError, NetworkError
+from sleep_manager.core import ConfigurationError
 
 
 @pytest.fixture
@@ -170,8 +170,11 @@ class TestSleeperRequest:
 
         with app.app_context():
             from sleep_manager.waker import sleeper_request
-            with pytest.raises(NetworkError):
-                sleeper_request('status')
+            result = sleeper_request('status')
+            assert result['op'] == 'status'
+            assert result['sleeper_status'] == 'down'
+            assert result['error'] == 'Sleeper machine is not reachable'
+            assert 'Request to sleeper timed out' in result['details']
 
     @patch('sleep_manager.waker.requests.get')
     def test_sleeper_request_connection_error(self, mock_get, app):
@@ -181,5 +184,55 @@ class TestSleeperRequest:
 
         with app.app_context():
             from sleep_manager.waker import sleeper_request
-            with pytest.raises(NetworkError):
-                sleeper_request('status')
+            result = sleeper_request('status')
+            assert result['op'] == 'status'
+            assert result['sleeper_status'] == 'down'
+            assert result['error'] == 'Sleeper machine is not reachable'
+            assert 'Connection refused' in result['details']
+
+    @patch('sleep_manager.waker.requests.get')
+    def test_sleeper_request_http_error(self, mock_get, app):
+        """Test sleeper request with HTTP error response."""
+        mock_response = MagicMock()
+        mock_response.status_code = 500
+        mock_response.ok = False
+        mock_response.text = 'Internal Server Error'
+        mock_get.return_value = mock_response
+
+        with app.app_context():
+            from sleep_manager.waker import sleeper_request
+            result = sleeper_request('status')
+            assert result['op'] == 'status'
+            assert result['sleeper_status'] == 'error'
+            assert result['error'] == 'Sleeper responded with error code 500'
+            assert result['details'] == 'Internal Server Error'
+
+    @patch('sleep_manager.waker.requests.get')
+    def test_sleeper_request_timeout_status_code(self, mock_get, app):
+        """Test sleeper request with 408 timeout status code."""
+        mock_response = MagicMock()
+        mock_response.status_code = 408
+        mock_response.ok = False
+        mock_get.return_value = mock_response
+
+        with app.app_context():
+            from sleep_manager.waker import sleeper_request
+            result = sleeper_request('status')
+            assert result['op'] == 'status'
+            assert result['sleeper_status'] == 'down'
+            assert result['error'] == 'Sleeper machine is not reachable'
+            assert result['details'] == 'Request to sleeper timed out'
+
+    @patch('sleep_manager.waker.requests.get')
+    def test_sleeper_request_general_request_exception(self, mock_get, app):
+        """Test sleeper request with general request exception."""
+        from requests.exceptions import RequestException
+        mock_get.side_effect = RequestException("Network error")
+
+        with app.app_context():
+            from sleep_manager.waker import sleeper_request
+            result = sleeper_request('status')
+            assert result['op'] == 'status'
+            assert result['sleeper_status'] == 'down'
+            assert result['error'] == 'Sleeper machine is not reachable'
+            assert 'Network error' in result['details']
