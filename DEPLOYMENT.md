@@ -1,6 +1,6 @@
-# Sleep Manager Deployment Guide
+# Deployment Guide
 
-This guide covers deploying the Sleep Manager application on Debian 12 systems.
+Detailed deployment instructions for Sleep Manager on Debian 12 systems.
 
 ## Prerequisites
 
@@ -9,51 +9,29 @@ This guide covers deploying the Sleep Manager application on Debian 12 systems.
 - Python 3.8 or higher
 - Network connectivity between machines
 
-## Quick Setup
-
-### 1. Clone and Setup
+## Automated Setup
 
 ```bash
-# Clone the repository
+# Clone and setup
 git clone <repository-url>
 cd sleep-manager
-
-# Make setup script executable
 chmod +x scripts/setup-system.sh
+
+# Setup machines
+sudo ./scripts/setup-system.sh sleeper  # Machine that will be suspended
+sudo ./scripts/setup-system.sh waker    # Machine that will wake the sleeper
+sudo ./scripts/setup-system.sh both     # Both services on same machine
 ```
 
-### 2. Run Setup Script
+## Configuration
 
-The setup script now uses command-line arguments instead of interactive menus:
-
-```bash
-# Setup Sleeper (machine that will be suspended)
-sudo ./scripts/setup-system.sh sleeper
-
-# Setup Waker (machine that will wake the sleeper)
-sudo ./scripts/setup-system.sh waker
-
-# Setup Both (if running both services on same machine)
-sudo ./scripts/setup-system.sh both
-
-# Show current status
-sudo ./scripts/setup-system.sh status
-
-# Get help
-./scripts/setup-system.sh help
-```
-
-### 3. Configuration
-
-Create the configuration file:
-
+Create configuration file:
 ```bash
 sudo mkdir -p /usr/local/sleep-manager/config
 sudo nano /usr/local/sleep-manager/config/sleep-manager-config.json
 ```
 
 Example configuration:
-
 ```json
 {
     "WAKER": {
@@ -70,35 +48,35 @@ Example configuration:
 }
 ```
 
-### 4. Start Services
+## Service Management
 
 ```bash
-# Start Sleeper service
-sudo systemctl start sleep-manager-sleeper
-
-# Start Waker service
-sudo systemctl start sleep-manager-waker
+# Start and enable services
+sudo systemctl start sleep-manager-sleeper sleep-manager-waker
+sudo systemctl enable sleep-manager-sleeper sleep-manager-waker
 
 # Check status
-sudo systemctl status sleep-manager-sleeper
-sudo systemctl status sleep-manager-waker
+sudo systemctl status sleep-manager-sleeper sleep-manager-waker
+
+# View logs
+sudo journalctl -u sleep-manager-* -f
 ```
 
-## Manual Configuration Steps
+## Manual Configuration
 
 ### BIOS/UEFI Wake-on-LAN Setup
 
-1. **Access BIOS/UEFI**: Restart and enter BIOS/UEFI settings
-2. **Power Management**: Navigate to Power Management or Advanced settings
-3. **Wake-on-LAN**: Enable "Wake on PCI-E" or "Wake on LAN"
-4. **Save and Exit**: Save changes and restart
+1. Restart and enter BIOS/UEFI settings
+2. Navigate to Power Management or Advanced settings
+3. Enable "Wake on PCI-E" or "Wake on LAN"
+4. Save changes and restart
 
 ### Network Interface Configuration
 
-The setup script automatically configures Wake-on-LAN for the primary network interface. If you need to configure additional interfaces:
+The setup script configures Wake-on-LAN automatically. For manual configuration:
 
 ```bash
-# Check current WoL status
+# Check WoL status
 sudo ethtool eth0
 
 # Enable WoL manually
@@ -108,8 +86,7 @@ sudo ethtool -s eth0 wol g
 sudo nano /etc/systemd/network/25-wol-eth0.network
 ```
 
-Add the following content:
-
+Add content:
 ```
 [Match]
 Name=eth0
@@ -118,65 +95,17 @@ Name=eth0
 WakeOnLan=magic
 ```
 
-## Service Management
-
-### Start Services
-
-```bash
-# Start services
-sudo systemctl start sleep-manager-sleeper
-sudo systemctl start sleep-manager-waker
-
-# Enable auto-start
-sudo systemctl enable sleep-manager-sleeper
-sudo systemctl enable sleep-manager-waker
-```
-
-### Stop Services
-
-```bash
-# Stop services
-sudo systemctl stop sleep-manager-sleeper
-sudo systemctl stop sleep-manager-waker
-
-# Disable auto-start
-sudo systemctl disable sleep-manager-sleeper
-sudo systemctl disable sleep-manager-waker
-```
-
-### View Logs
-
-```bash
-# View service logs
-sudo journalctl -u sleep-manager-sleeper -f
-sudo journalctl -u sleep-manager-waker -f
-
-# View recent logs
-sudo journalctl -u sleep-manager-sleeper --since "1 hour ago"
-```
-
 ## Testing
 
-### Test Sleeper Service
-
 ```bash
-# Test suspend endpoint
-curl -H "X-API-Key: your-secure-api-key-here" \
-     http://sleeper_url:51339/suspend
+# Test wake
+curl -H "X-API-Key: your-api-key" http://waker_url:51339/waker/wake
 
-# Test status endpoint
-curl http://sleeper_url:51339/status
-```
+# Test suspend
+curl -H "X-API-Key: your-api-key" http://waker_url:51339/waker/suspend
 
-### Test Waker Service
-
-```bash
-# Test wake endpoint
-curl -H "X-API-Key: your-secure-api-key-here" \
-     http://waker_url:51339/wake
-
-# Test status endpoint
-curl http://waker_url:51339/status
+# Check status
+curl -H "X-API-Key: your-api-key" http://waker_url:51339/waker/status
 ```
 
 ## Troubleshooting
@@ -185,78 +114,55 @@ curl http://waker_url:51339/status
 
 1. **Service won't start**
    ```bash
-   # Check service status
    sudo systemctl status sleep-manager-sleeper
-   
-   # Check logs
    sudo journalctl -u sleep-manager-sleeper -n 50
    ```
 
 2. **Wake-on-LAN not working**
    ```bash
-   # Check WoL status
-   sudo ethtool eth0
-   
-   # Test WoL manually
+   sudo ethtool eth0 | grep -i wake
    sudo etherwake AA:BB:CC:DD:EE:FF
    ```
 
 3. **Network connectivity issues**
    ```bash
-   # Check hostname resolution
    sudo ./scripts/setup-system.sh status
-   
-   # Test connectivity
    ping sleeper_url
    ```
 
 ### Uninstallation
 
 ```bash
-# Uninstall specific components
+# Remove specific components
 sudo ./scripts/setup-system.sh uninstall-sleeper
 sudo ./scripts/setup-system.sh uninstall-waker
 
-# Uninstall everything
+# Remove everything
 sudo ./scripts/setup-system.sh uninstall-all
 ```
 
-## Security Considerations
+## Security
 
-- Change the default API key in the configuration
+- Change default API key in configuration
 - Use HTTPS in production environments
 - Configure firewall rules appropriately
 - Regularly update dependencies
 
 ## Maintenance
 
-### Update Dependencies
-
 ```bash
-# Update Python packages
+# Update dependencies
 sudo ./scripts/setup-system.sh update-deps
-```
 
-### Backup Configuration
-
-```bash
 # Backup configuration
 sudo cp /usr/local/sleep-manager/config/sleep-manager-config.json /backup/
-```
 
-### Monitor Services
-
-```bash
-# Check service status
+# Monitor services
 sudo ./scripts/setup-system.sh status
-
-# Monitor logs
-sudo journalctl -u sleep-manager-* -f
 ```
 
 ## Next Steps
 
-After deployment, refer to:
-- [API Documentation](API.md) for endpoint details
 - [System Requirements](SYSTEM_REQUIREMENTS.md) for additional configuration
-- [Quick Reference](QUICK_REFERENCE.md) for common commands 
+- [Quick Reference](QUICK_REFERENCE.md) for common commands
+- [API Documentation](docs/_build/html/index.html) for endpoint details 
