@@ -257,104 +257,21 @@ setup_sleeper() {
     print_status "Flask application service installed and enabled"
     
     # Configure Wake-on-LAN
-    print_status "Configuring Wake-on-LAN..."
-    
-    # Function to detect Ethernet interfaces
-    detect_ethernet_interfaces() {
-        local ethernet_interfaces=()
-        
-        # Get all network interfaces
-        while IFS= read -r line; do
-            # Extract interface name and type
-            if [[ $line =~ ^[0-9]+:[[:space:]]+([^:]+): ]]; then
-                local iface="${BASH_REMATCH[1]}"
-                
-                # Skip loopback, wireless, bridge, and virtual interfaces
-                if [[ "$iface" != "lo" && 
-                      "$iface" != wl* && 
-                      "$iface" != br-* && 
-                      "$iface" != docker* && 
-                      "$iface" != veth* ]]; then
-                    
-                    # Check if it's an Ethernet interface by looking for ether address
-                    if ip link show "$iface" | grep -q "link/ether"; then
-                        ethernet_interfaces+=("$iface")
-                    fi
-                fi
-            fi
-        done < <(ip link show)
-        
-        echo "${ethernet_interfaces[@]}"
-    }
-    
-    # Detect available Ethernet interfaces
-    print_status "Detecting Ethernet interfaces for Wake-on-LAN..."
-    ethernet_interfaces=($(detect_ethernet_interfaces))
-    
-    if [[ ${#ethernet_interfaces[@]} -eq 0 ]]; then
-        print_warning "No Ethernet interfaces detected!"
-        print_warning "Wake-on-LAN requires an Ethernet interface (WiFi interfaces don't support WoL)."
-        print_warning "Please ensure you have an Ethernet connection available."
-        read -p "Enter Ethernet interface name manually (e.g., eth0, enp0s3): " PRIMARY_INTERFACE
-    elif [[ ${#ethernet_interfaces[@]} -eq 1 ]]; then
-        PRIMARY_INTERFACE="${ethernet_interfaces[0]}"
-        print_status "Found single Ethernet interface: $PRIMARY_INTERFACE"
-    else
-        print_status "Found multiple Ethernet interfaces:"
-        for i in "${!ethernet_interfaces[@]}"; do
-            echo "  $((i+1)). ${ethernet_interfaces[i]}"
-        done
-        
-        while true; do
-            read -p "Select interface for Wake-on-LAN (1-${#ethernet_interfaces[@]}): " choice
-            if [[ "$choice" =~ ^[0-9]+$ && "$choice" -ge 1 && "$choice" -le ${#ethernet_interfaces[@]} ]]; then
-                PRIMARY_INTERFACE="${ethernet_interfaces[$((choice-1))]}"
-                break
-            else
-                print_warning "Invalid selection. Please enter a number between 1 and ${#ethernet_interfaces[@]}."
-            fi
-        done
-    fi
-    
-    print_status "Using Ethernet interface for Wake-on-LAN: $PRIMARY_INTERFACE"
-    
-    # Verify the interface exists and is Ethernet
-    if ! ip link show "$PRIMARY_INTERFACE" >/dev/null 2>&1; then
-        print_error "Interface $PRIMARY_INTERFACE does not exist!"
-        exit 1
-    fi
-    
-    if ! ip link show "$PRIMARY_INTERFACE" | grep -q "link/ether"; then
-        print_warning "Interface $PRIMARY_INTERFACE may not be an Ethernet interface."
-        print_warning "Wake-on-LAN typically only works on Ethernet interfaces, not WiFi."
-        read -p "Continue anyway? (y/N): " -n 1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            print_status "Wake-on-LAN configuration skipped."
-            return 0
+    print_status "Configuring Wake-on-LAN using NetworkManager (nmcli)..."
+    if command_exists nmcli; then
+        # Find the connection name for the interface
+        CONNECTION_NAME=$(nmcli -g NAME,DEVICE connection show --active | awk -F: -v iface="$PRIMARY_INTERFACE" '$2 == iface {print $1}')
+        if [[ -n "$CONNECTION_NAME" ]]; then
+            print_status "Enabling Wake-on-LAN (magic packet) for $PRIMARY_INTERFACE via NetworkManager connection '$CONNECTION_NAME'..."
+            sudo nmcli connection modify "$CONNECTION_NAME" 802-3-ethernet.wake-on-lan magic
+            print_status "Wake-on-LAN enabled for $PRIMARY_INTERFACE (connection: $CONNECTION_NAME)"
+            print_status "You may need to reactivate the connection or reboot for changes to take effect."
+        else
+            print_warning "Could not find an active NetworkManager connection for $PRIMARY_INTERFACE. Please configure WoL manually."
         fi
+    else
+        print_warning "NetworkManager (nmcli) not found. Please enable Wake-on-LAN manually for $PRIMARY_INTERFACE."
     fi
-    
-    # Create systemd-networkd configuration for persistent WoL
-    print_status "Creating systemd-networkd configuration for persistent WoL..."
-    cat > "/etc/systemd/network/25-wol-${PRIMARY_INTERFACE}.network" << EOF
-[Match]
-Name=$PRIMARY_INTERFACE
-
-[Link]
-WakeOnLan=magic
-EOF
-    print_status "Created systemd-networkd configuration for $PRIMARY_INTERFACE"
-    
-    # Restart systemd-networkd to apply changes
-    if systemctl is-active systemd-networkd >/dev/null 2>&1; then
-        print_status "Restarting systemd-networkd to apply WoL configuration..."
-        systemctl restart systemd-networkd
-    fi
-    
-    print_status "Wake-on-LAN configuration complete (managed by systemd-networkd)"
-    print_warning "Note: Wake-on-LAN must also be enabled in your BIOS/UEFI settings!"
-    print_warning "Look for options like 'Wake on LAN', 'Power on by PCI-E', or 'Resume by LAN'."
     
     print_status "Sleeper setup complete!"
     print_warning "Don't forget to:"
