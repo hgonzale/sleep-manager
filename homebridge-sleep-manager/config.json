@@ -1,28 +1,27 @@
 {
-  "bridge": {
-    "name": "Homebridge",
-    "username": "CC:22:3D:E3:CE:30",
-    "port": 51826,
-    "pin": "031-45-154"
-  },
-  "accessories": [
-    {
-      "accessory": "HttpSwitch",
-      "name": "Sleep Manager",
-      "switchType": "stateful",
-      "onUrl": "http://192.168.1.100:51339/waker/wake",
-      "offUrl": "http://192.168.1.100:51339/waker/suspend",
-      "statusUrl": "http://192.168.1.100:51339/waker/status",
-      "httpMethod": "GET",
+  "accessory": "HTTP-SWITCH",
+  "name": "monteverdi sleep-manager",
+  "switchType": "stateful",
+  "onUrl": {
+      "url": "http://waker_url:51339/waker/wake",
       "headers": {
-        "X-API-Key": "your-waker-api-key-here"
-      },
-      "statusPattern": {
-        "on": "running",
-        "off": "stopping|maintenance"
-      },
-      "pollInterval": 30
-    }
-  ],
-  "platforms": []
-} 
+          "X-API-Key": "YOUR API KEY"
+      }
+  },
+  "offUrl": {
+      "url": "http://waker_url:51339/waker/suspend",
+      "headers": {
+          "X-API-Key": "YOUR API KEY"
+      }
+  },
+  "statusUrl": {
+      "url": "http://waker_url:51339/waker/status",
+      "headers": {
+          "X-API-Key": "YOUR API KEY"
+      }
+  },
+  "statusPattern": {
+      "on": "running",
+      "off": "stopping|maintenance"
+  }
+}

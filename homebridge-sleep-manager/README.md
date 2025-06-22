@@ -19,43 +19,6 @@ Integrate your sleep-manager system with HomeKit using the `homebridge-http-swit
 
 4. **Restart Homebridge**
 
-## Configuration Options
-
-### Single Toggle Switch (Recommended)
-```json
-{
-  "accessory": "HttpSwitch",
-  "name": "Sleep Manager",
-  "switchType": "stateful",
-  "onUrl": "http://192.168.1.100:51339/waker/wake",
-  "offUrl": "http://192.168.1.100:51339/waker/suspend",
-  "statusUrl": "http://192.168.1.100:51339/waker/status",
-  "httpMethod": "GET",
-  "headers": {
-    "X-API-Key": "your-waker-api-key-here"
-  },
-  "statusPattern": {
-    "on": "running",
-    "off": "stopping|maintenance"
-  },
-  "pollInterval": 30
-}
-```
-
-### Separate Switches
-```json
-{
-  "accessory": "HttpSwitch",
-  "name": "Wake System",
-  "switchType": "stateless",
-  "onUrl": "http://192.168.1.100:51339/waker/wake",
-  "httpMethod": "GET",
-  "headers": {
-    "X-API-Key": "your-waker-api-key-here"
-  }
-}
-```
-
 ## API Endpoints Used
 
 - **Wake**: `GET /waker/wake`
@@ -66,7 +29,7 @@ Integrate your sleep-manager system with HomeKit using the `homebridge-http-swit
 
 **Test API manually**:
 ```bash
-curl -H "X-API-Key: your-api-key" http://waker-host:51339/waker/status
+curl -H "X-API-Key: your-api-key" http://waker_url:51339/waker/status
 ```
 
 **Common issues**:
