@@ -10,8 +10,8 @@
     "SLEEPER": {
         "name": "sleeper_url",
         "mac_address": "aa:bb:cc:dd:ee:ff",
-        "systemctl_exec": "/usr/bin/systemctl",
+        "systemctl_command": "/usr/bin/systemctl",
         "suspend_verb": "suspend",
         "status_verb": "is-system-running"
     }
-} 
+}
