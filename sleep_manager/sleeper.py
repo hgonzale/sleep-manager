@@ -1,17 +1,19 @@
-from flask import Blueprint, current_app
-import subprocess
-from typing import Any
-import logging
-from .core import require_api_key, ConfigurationError, SystemCommandError
 import datetime
+import logging
+import subprocess
 from copy import deepcopy
+from typing import Any
+
+from flask import Blueprint, current_app
+
+from .core import ConfigurationError, SystemCommandError, require_api_key
 
 logger = logging.getLogger(__name__)
 
-sleeper_bp = Blueprint('sleeper', __name__, url_prefix='/sleeper')
+sleeper_bp = Blueprint("sleeper", __name__, url_prefix="/sleeper")
 
 
-@sleeper_bp.get('/config')
+@sleeper_bp.get("/config")
 @require_api_key
 def print_config() -> dict[str, Any]:
     """Get sleeper configuration (sanitized for JSON serialization and security)."""
@@ -27,13 +29,13 @@ def print_config() -> dict[str, Any]:
 
     config = deepcopy(dict(current_app.config))
     # Hide API key
-    if 'API_KEY' in config:
-        config['API_KEY'] = '***hidden***'
+    if "API_KEY" in config:
+        config["API_KEY"] = "***hidden***"
     # Recursively sanitize
     return sanitize(config)  # type: ignore
 
 
-@sleeper_bp.get('/suspend')
+@sleeper_bp.get("/suspend")
 @require_api_key
 def suspend() -> dict[str, Any]:
     """Suspend the sleeper machine.
@@ -87,26 +89,23 @@ def suspend() -> dict[str, Any]:
             }
     """
     try:
-        systemctl_exec = current_app.config['SLEEPER']['systemctl_command']
-        suspend_verb = current_app.config['SLEEPER']['suspend_verb']
+        systemctl_exec = current_app.config["SLEEPER"]["systemctl_command"]
+        suspend_verb = current_app.config["SLEEPER"]["suspend_verb"]
 
-        logger.info(
-            f"Attempting to suspend system using sudo {systemctl_exec} "
-            f"{suspend_verb}"
-        )
+        logger.info(f"Attempting to suspend system using sudo {systemctl_exec} {suspend_verb}")
 
         # Once this command is executed, we have a race between the system suspend
         # and Flask responding the request. We assume that systemd-sleep has been
         # added a pre-suspend service with a delay of ~5 secs, so this Flask has
         # enough time to respond.
-        subprocess.Popen(['sudo', systemctl_exec, suspend_verb])
+        subprocess.Popen(["sudo", systemctl_exec, suspend_verb])
 
         logger.info("Suspend command initiated successfully")
         return {
-            'op': 'suspend',
-            'subprocess': {
-                'args': ['sudo', systemctl_exec, suspend_verb],
-            }
+            "op": "suspend",
+            "subprocess": {
+                "args": ["sudo", systemctl_exec, suspend_verb],
+            },
         }
     except KeyError as e:
         raise ConfigurationError(f"Missing configuration: {str(e)}")
@@ -116,11 +115,11 @@ def suspend() -> dict[str, Any]:
             "Failed to suspend system",
             command=f"{systemctl_exec} {suspend_verb}",
             return_code=-1,
-            stderr=str(e)
+            stderr=str(e),
         )
 
 
-@sleeper_bp.get('/status')
+@sleeper_bp.get("/status")
 @require_api_key
 def status() -> dict[str, Any]:
     """Get sleeper system status.
@@ -184,38 +183,32 @@ def status() -> dict[str, Any]:
             }
     """
     try:
-        systemctl_exec = current_app.config['SLEEPER']['systemctl_command']
-        status_verb = current_app.config['SLEEPER']['status_verb']
+        systemctl_exec = current_app.config["SLEEPER"]["systemctl_command"]
+        status_verb = current_app.config["SLEEPER"]["status_verb"]
 
-        logger.info(
-            f"Checking system status using sudo {systemctl_exec} {status_verb}"
-        )
+        logger.info(f"Checking system status using sudo {systemctl_exec} {status_verb}")
 
         # run systemd status command
-        _res = subprocess.run(
-            [systemctl_exec, status_verb],
-            capture_output=True,
-            text=True
-        )
+        _res = subprocess.run([systemctl_exec, status_verb], capture_output=True, text=True)
 
         if _res.returncode != 0:
             raise SystemCommandError(
                 "Status command failed",
                 command=f"{systemctl_exec} {status_verb}",
                 return_code=_res.returncode,
-                stderr=_res.stderr
+                stderr=_res.stderr,
             )
 
         logger.info("Status command completed successfully")
         return {
-            'op': 'status',
-            'status': _res.stdout,
-            'subprocess': {
-                'args': _res.args,
-                'returncode': _res.returncode,
-                'stdout': _res.stdout,
-                'stderr': _res.stderr,
-            }
+            "op": "status",
+            "status": _res.stdout,
+            "subprocess": {
+                "args": _res.args,
+                "returncode": _res.returncode,
+                "stdout": _res.stdout,
+                "stderr": _res.stderr,
+            },
         }
     except KeyError as e:
         raise ConfigurationError(f"Missing configuration: {str(e)}")
@@ -227,7 +220,7 @@ def status() -> dict[str, Any]:
             "Failed to get system status",
             command=f"{systemctl_exec} {status_verb}",
             return_code=-1,
-            stderr=str(e)
+            stderr=str(e),
         )
 
 
@@ -244,10 +237,10 @@ def sleeper_url() -> str:
         ConfigurationError: If required configuration is missing
     """
     try:
-        sleeper_name = current_app.config['SLEEPER']['name']
-        domain = current_app.config['DOMAIN']
-        port = current_app.config['PORT']
+        sleeper_name = current_app.config["SLEEPER"]["name"]
+        domain = current_app.config["DOMAIN"]
+        port = current_app.config["PORT"]
 
-        return f'http://{sleeper_name}.{domain}:{port}/sleeper'
+        return f"http://{sleeper_name}.{domain}:{port}/sleeper"
     except KeyError as e:
         raise ConfigurationError(f"Missing configuration: {str(e)}")

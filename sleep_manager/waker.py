@@ -1,17 +1,19 @@
-from flask import Blueprint, current_app
-import requests
+import logging
 import subprocess
 from typing import Any
-import logging
-from .core import require_api_key, ConfigurationError, SystemCommandError
+
+import requests
+from flask import Blueprint, current_app
+
+from .core import ConfigurationError, SystemCommandError, require_api_key
 from .sleeper import sleeper_url
 
 logger = logging.getLogger(__name__)
 
-waker_bp = Blueprint('waker', __name__, url_prefix='/waker')
+waker_bp = Blueprint("waker", __name__, url_prefix="/waker")
 
 
-@waker_bp.get('/config')
+@waker_bp.get("/config")
 @require_api_key
 def print_config() -> dict[str, Any]:
     """Get waker configuration.
@@ -55,10 +57,10 @@ def print_config() -> dict[str, Any]:
                 "wol_exec": "/usr/sbin/etherwake"
             }
     """
-    return current_app.config['WAKER']
+    return current_app.config["WAKER"]
 
 
-@waker_bp.get('/wake')
+@waker_bp.get("/wake")
 @require_api_key
 def wake() -> dict[str, Any]:
     """Send Wake-on-LAN packet to wake the sleeper machine.
@@ -122,36 +124,36 @@ def wake() -> dict[str, Any]:
             }
     """
     try:
-        sleeper_name = current_app.config['SLEEPER']['name']
-        sleeper_mac = current_app.config['SLEEPER']['mac_address']
-        wol_exec = current_app.config['WAKER']['wol_exec']
+        sleeper_name = current_app.config["SLEEPER"]["name"]
+        sleeper_mac = current_app.config["SLEEPER"]["mac_address"]
+        wol_exec = current_app.config["WAKER"]["wol_exec"]
 
         logger.info(f"Attempting to wake {sleeper_name} using {wol_exec} {sleeper_mac}")
 
         # run wake command and get return_code
-        _res = subprocess.run(['sudo', wol_exec, sleeper_mac], capture_output=True, text=True)
+        _res = subprocess.run(["sudo", wol_exec, sleeper_mac], capture_output=True, text=True)
 
         if _res.returncode != 0:
             raise SystemCommandError(
                 "Wake command failed",
                 command=f"{wol_exec} {sleeper_mac}",
                 return_code=_res.returncode,
-                stderr=_res.stderr
+                stderr=_res.stderr,
             )
 
         logger.info(f"Successfully sent wake command to {sleeper_name}")
         return {
-            'op': 'wake',
-            'sleeper': {
-                'name': sleeper_name,
-                'mac_address': sleeper_mac,
+            "op": "wake",
+            "sleeper": {
+                "name": sleeper_name,
+                "mac_address": sleeper_mac,
             },
-            'subprocess': {
-                'args': _res.args,
-                'returncode': _res.returncode,
-                'stdout': _res.stdout,
-                'stderr': _res.stderr,
-            }
+            "subprocess": {
+                "args": _res.args,
+                "returncode": _res.returncode,
+                "stdout": _res.stdout,
+                "stderr": _res.stderr,
+            },
         }
     except KeyError as e:
         raise ConfigurationError(f"Missing configuration: {str(e)}")
@@ -163,11 +165,11 @@ def wake() -> dict[str, Any]:
             "Failed to wake sleeper",
             command=f"{wol_exec} {sleeper_mac}",
             return_code=-1,
-            stderr=str(e)
+            stderr=str(e),
         )
 
 
-@waker_bp.get('/suspend')
+@waker_bp.get("/suspend")
 @require_api_key
 def suspend() -> dict[str, Any]:
     """Proxy suspend request to the sleeper machine.
@@ -233,10 +235,10 @@ def suspend() -> dict[str, Any]:
                 }
             }
     """
-    return sleeper_request('suspend')
+    return sleeper_request("suspend")
 
 
-@waker_bp.get('/status')
+@waker_bp.get("/status")
 @require_api_key
 def status() -> dict[str, Any]:
     """Proxy status request to the sleeper machine.
@@ -308,7 +310,7 @@ def status() -> dict[str, Any]:
                 }
             }
     """
-    return sleeper_request('status')
+    return sleeper_request("status")
 
 
 def waker_url() -> str:
@@ -324,11 +326,11 @@ def waker_url() -> str:
         ConfigurationError: If required configuration is missing
     """
     try:
-        waker_name = current_app.config['WAKER']['name']
-        domain = current_app.config['DOMAIN']
-        port = current_app.config['PORT']
+        waker_name = current_app.config["WAKER"]["name"]
+        domain = current_app.config["DOMAIN"]
+        port = current_app.config["PORT"]
 
-        return f'http://{waker_name}.{domain}:{port}/waker'
+        return f"http://{waker_name}.{domain}:{port}/waker"
     except KeyError as e:
         raise ConfigurationError(f"Missing configuration: {str(e)}")
 
@@ -381,13 +383,13 @@ def sleeper_request(endpoint: str) -> dict[str, Any]:
     try:
         url = sleeper_url()
         # max value 3.05 is slightly larger than 3 (TCP response window)
-        request_timeout = max(current_app.config['DEFAULT_REQUEST_TIMEOUT'], 3.05)
+        request_timeout = max(current_app.config["DEFAULT_REQUEST_TIMEOUT"], 3.05)
         logger.info(f"Making request to sleeper at {url}/{endpoint}")
 
         _res = requests.get(
-            f'{url}/{endpoint}',
+            f"{url}/{endpoint}",
             timeout=request_timeout,
-            headers={'X-API-Key': current_app.config['API_KEY']}
+            headers={"X-API-Key": current_app.config["API_KEY"]},
         )
 
         _json = {}
@@ -396,61 +398,61 @@ def sleeper_request(endpoint: str) -> dict[str, Any]:
         if _res.status_code == 408:
             logger.warning(f"Request to sleeper timed out for {endpoint}")
             return {
-                'op': endpoint,
-                'sleeper_status': 'down',
-                'error': 'Sleeper machine is not reachable',
-                'details': 'Request to sleeper timed out'
+                "op": endpoint,
+                "sleeper_status": "down",
+                "error": "Sleeper machine is not reachable",
+                "details": "Request to sleeper timed out",
             }
         elif not _res.ok:
             logger.warning(f"Sleeper responded with error code {_res.status_code} for {endpoint}")
             return {
-                'op': endpoint,
-                'sleeper_status': 'error',
-                'error': f'Sleeper responded with error code {_res.status_code}',
-                'details': _res.text
+                "op": endpoint,
+                "sleeper_status": "error",
+                "error": f"Sleeper responded with error code {_res.status_code}",
+                "details": _res.text,
             }
         else:
             _json = _res.json()
 
         logger.info(f"Successfully received response from sleeper for {endpoint}")
         return {
-            'op': endpoint,
-            'sleeper_response': {
-                'status_code': _res.status_code,
-                'json': _json,
-                'text': _res.text,
-                'url': _res.url,
-            }
+            "op": endpoint,
+            "sleeper_response": {
+                "status_code": _res.status_code,
+                "json": _json,
+                "text": _res.text,
+                "url": _res.url,
+            },
         }
     except requests.exceptions.Timeout:
         logger.warning(f"Request to sleeper timed out for {endpoint}")
         return {
-            'op': endpoint,
-            'sleeper_status': 'down',
-            'error': 'Sleeper machine is not reachable',
-            'details': 'Request to sleeper timed out'
+            "op": endpoint,
+            "sleeper_status": "down",
+            "error": "Sleeper machine is not reachable",
+            "details": "Request to sleeper timed out",
         }
     except requests.exceptions.ConnectionError:
         logger.warning(f"Failed to connect to sleeper for {endpoint}")
         return {
-            'op': endpoint,
-            'sleeper_status': 'down',
-            'error': 'Sleeper machine is not reachable',
-            'details': 'Connection refused - sleeper may be down or sleeping'
+            "op": endpoint,
+            "sleeper_status": "down",
+            "error": "Sleeper machine is not reachable",
+            "details": "Connection refused - sleeper may be down or sleeping",
         }
     except requests.exceptions.RequestException as e:
         logger.warning(f"Network error communicating with sleeper for {endpoint}: {str(e)}")
         return {
-            'op': endpoint,
-            'sleeper_status': 'down',
-            'error': 'Sleeper machine is not reachable',
-            'details': f'Network error: {str(e)}'
+            "op": endpoint,
+            "sleeper_status": "down",
+            "error": "Sleeper machine is not reachable",
+            "details": f"Network error: {str(e)}",
         }
     except Exception as e:
         logger.exception(f"Unexpected error during sleeper request for {endpoint}")
         return {
-            'op': endpoint,
-            'sleeper_status': 'error',
-            'error': 'Unexpected error occurred',
-            'details': str(e)
+            "op": endpoint,
+            "sleeper_status": "error",
+            "error": "Unexpected error occurred",
+            "details": str(e),
         }

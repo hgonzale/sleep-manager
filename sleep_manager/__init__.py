@@ -1,17 +1,13 @@
-from flask import Flask, json, current_app
 import logging
-from .core import (
-    SleepManagerError, handle_error, check_command_availability
-)
-from .waker import waker_bp
-from .sleeper import sleeper_bp
 
+from flask import Flask, current_app, json
+
+from .core import SleepManagerError, check_command_availability, handle_error
+from .sleeper import sleeper_bp
+from .waker import waker_bp
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -36,7 +32,11 @@ def create_app():
     # create and configure the app
     app = Flask(__name__, instance_relative_config=False)
 
-    app.config.from_file('/usr/local/sleep-manager/config/sleep-manager-config.json', load=json.load, text=True)
+    app.config.from_file(
+        "/usr/local/sleep-manager/config/sleep-manager-config.json",
+        load=json.load,
+        text=True,
+    )
     logger.info(f"Loaded config: {app.config.get('SLEEPER')}")
 
     # Register error handlers
@@ -47,7 +47,7 @@ def create_app():
     app.register_blueprint(waker_bp)
     app.register_blueprint(sleeper_bp)
 
-    @app.route('/')
+    @app.route("/")
     def welcome():
         """Welcome endpoint.
 
@@ -69,11 +69,12 @@ def create_app():
 
                 curl http://sleeper_url:51339/
         """
-        return 'Welcome to sleep manager!'
+        return "Welcome to sleep manager!"
 
-    @app.route('/health')
+    @app.route("/health")
     def health_check():
         """Comprehensive health check endpoint."""
+
         def sanitize(obj):
             if isinstance(obj, dict):
                 return {k: sanitize(v) for k, v in obj.items()}
@@ -93,24 +94,24 @@ def create_app():
 
             try:
                 # Check if we have sleeper config
-                if 'SLEEPER' in current_app.config:
-                    role = 'sleeper'
-                    required_keys = ['name', 'mac_address', 'suspend_verb']
+                if "SLEEPER" in current_app.config:
+                    role = "sleeper"
+                    required_keys = ["name", "mac_address", "suspend_verb"]
                     for key in required_keys:
-                        if key not in current_app.config['SLEEPER']:
+                        if key not in current_app.config["SLEEPER"]:
                             config_errors.append(f"Missing SLEEPER.{key}")
 
                 # Check if we have waker config
-                if 'WAKER' in current_app.config:
+                if "WAKER" in current_app.config:
                     if role is None:
-                        role = 'waker'
-                    required_keys = ['name', 'wol_exec']
+                        role = "waker"
+                    required_keys = ["name", "wol_exec"]
                     for key in required_keys:
-                        if key not in current_app.config['WAKER']:
+                        if key not in current_app.config["WAKER"]:
                             config_errors.append(f"Missing WAKER.{key}")
 
                 # Check API key
-                if 'API_KEY' not in current_app.config:
+                if "API_KEY" not in current_app.config:
                     config_errors.append("Missing API_KEY")
 
             except Exception as e:
@@ -118,32 +119,29 @@ def create_app():
 
             # Check command availability based on role
             commands = {}
-            if role == 'sleeper':
-                commands['systemctl'] = check_command_availability('systemctl')
-            elif role == 'waker':
-                commands['etherwake'] = check_command_availability('etherwake')
+            if role == "sleeper":
+                commands["systemctl"] = check_command_availability("systemctl")
+            elif role == "waker":
+                commands["etherwake"] = check_command_availability("etherwake")
 
             # Determine overall health
             config_valid = len(config_errors) == 0
-            commands_healthy = all(cmd.get('available', False) for cmd in commands.values())
+            commands_healthy = all(cmd.get("available", False) for cmd in commands.values())
             overall_healthy = config_valid and commands_healthy
 
             result = {
-                'status': 'healthy' if overall_healthy else 'unhealthy',
-                'config': {
-                    'valid': config_valid,
-                    'role': role,
-                    'errors': config_errors
+                "status": "healthy" if overall_healthy else "unhealthy",
+                "config": {
+                    "valid": config_valid,
+                    "role": role,
+                    "errors": config_errors,
                 },
-                'commands': commands
+                "commands": commands,
             }
             return sanitize(result)
 
         except Exception as e:
             logger.exception("Health check failed")
-            return {
-                'status': 'unhealthy',
-                'error': str(e)
-            }, 500
+            return {"status": "unhealthy", "error": str(e)}, 500
 
     return app
