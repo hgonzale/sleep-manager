@@ -1,7 +1,7 @@
 [Unit]
 Description=Sleep Manager Sleeper Service
-After=network.target
-Wants=network.target
+After=network.target network-online.target multi-user.target
+Wants=network.target network-online.target
 
 [Service]
 Type=simple
@@ -25,9 +25,5 @@ ProtectSystem=strict
 ProtectHome=true
 ReadWritePaths=/usr/local/sleep-manager
 
-# Allow systemctl commands
-ExecStartPre=/bin/systemctl is-system-running
-ExecStartPre=/bin/systemctl is-system-running
-
 [Install]
-WantedBy=multi-user.target 
+WantedBy=multi-user.target
