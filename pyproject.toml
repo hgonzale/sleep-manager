@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sleep-manager"
-version = "1.0.0"
+version = "1.1.0"
 description = "A Flask application for managing sleep/wake cycles between machines"
 readme = "README.md"
 requires-python = ">=3.10"
