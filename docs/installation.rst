@@ -9,7 +9,7 @@ Prerequisites
 Before installation, ensure you have:
 
 * **Debian 12 (Bookworm)** or compatible Linux distribution
-* **Python 3.8** or higher
+* **Python 3.10** or higher
 * **Root/sudo access** on both machines
 * **Network connectivity** between machines
 * **Wake-on-LAN capable** network interface (for sleeper)

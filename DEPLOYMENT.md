@@ -6,7 +6,7 @@ Detailed deployment instructions for Sleep Manager on Debian 12 systems.
 
 - Debian 12 system
 - Root access (sudo)
-- Python 3.8 or higher
+- Python 3.10 or higher
 - Network connectivity between machines
 
 ## Automated Setup

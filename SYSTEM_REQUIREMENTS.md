@@ -18,7 +18,7 @@ System requirements and compatibility information for Sleep Manager.
 ### Operating System
 - **Debian 12 (Bookworm)** or compatible Linux distribution
 - **systemd** for service management
-- **Python 3.8+** for application runtime
+- **Python 3.10+** for application runtime
 
 ### Required Packages
 

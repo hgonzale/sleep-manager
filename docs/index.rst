@@ -91,7 +91,7 @@ Installation
 
 The Sleep Manager is designed for Debian 12 systems and requires:
 
-* Python 3.8 or higher
+* Python 3.10 or higher
 * systemd for service management
 * Wake-on-LAN capable network interface (sleeper)
 * etherwake package (waker)
