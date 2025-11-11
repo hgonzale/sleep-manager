@@ -5,6 +5,7 @@ A Flask-based application for managing sleep/wake cycles between two machines on
 ## Quick Start
 
 1. **Clone and setup**:
+
    ```bash
    git clone <repository-url>
    cd sleep-manager
@@ -12,6 +13,7 @@ A Flask-based application for managing sleep/wake cycles between two machines on
    ```
 
 2. **Setup machines**:
+
    ```bash
    # Setup sleeper (machine that will be suspended)
    sudo ./scripts/setup-system.sh sleeper
@@ -21,12 +23,14 @@ A Flask-based application for managing sleep/wake cycles between two machines on
    ```
 
 3. **Configure**:
+
    ```bash
    sudo mkdir -p /usr/local/sleep-manager/config
    sudo nano /usr/local/sleep-manager/config/sleep-manager-config.json
    ```
 
 4. **Start services**:
+
    ```bash
    sudo systemctl start sleep-manager-sleeper
    sudo systemctl start sleep-manager-waker
@@ -36,7 +40,7 @@ A Flask-based application for managing sleep/wake cycles between two machines on
 
 ## Architecture
 
-```
+```text
 [Waker Machine] ---- [Local Network] ---- [Sleeper Machine]
     (waker_url)                              (sleeper_url)
 ```
@@ -91,6 +95,8 @@ The repository uses [uv](https://github.com/astral-sh/uv) for dependency managem
 uv sync --group dev
 ```
 
+> **Note:** The `uv sync` run provisions the repo-local `.venv`; activate it or run commands directly from `./.venv/bin/...` so you always execute tools against that synced environment (e.g., `./.venv/bin/mypy`).
+
 Common development tasks:
 
 ```bash
@@ -113,4 +119,4 @@ See [homebridge-sleep-manager/](homebridge-sleep-manager/) for HomeKit integrati
 
 ## License
 
-BSD 2-clause License - see LICENSE file for details. 
+BSD 2-clause License - see LICENSE file for details.

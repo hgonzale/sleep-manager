@@ -1,4 +1,5 @@
 import logging
+from typing import Any, cast
 
 from flask import Flask, current_app, json
 
@@ -11,7 +12,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(level
 logger = logging.getLogger(__name__)
 
 
-def create_app():
+def create_app() -> Flask:
     """Create and configure the Flask application.
 
     This function creates a Flask application instance, loads configuration,
@@ -48,7 +49,7 @@ def create_app():
     app.register_blueprint(sleeper_bp)
 
     @app.route("/")
-    def welcome():
+    def welcome() -> str:
         """Welcome endpoint.
 
         Returns a simple welcome message for the Sleep Manager API.
@@ -72,10 +73,10 @@ def create_app():
         return "Welcome to sleep manager!"
 
     @app.route("/health")
-    def health_check():
+    def health_check() -> dict[str, Any] | tuple[dict[str, Any], int]:
         """Comprehensive health check endpoint."""
 
-        def sanitize(obj):
+        def sanitize(obj: Any) -> Any:
             if isinstance(obj, dict):
                 return {k: sanitize(v) for k, v in obj.items()}
             elif isinstance(obj, list):
@@ -118,7 +119,7 @@ def create_app():
                 config_errors.append(f"Configuration error: {str(e)}")
 
             # Check command availability based on role
-            commands = {}
+            commands: dict[str, dict[str, Any]] = {}
             if role == "sleeper":
                 commands["systemctl"] = check_command_availability("systemctl")
             elif role == "waker":
@@ -129,7 +130,7 @@ def create_app():
             commands_healthy = all(cmd.get("available", False) for cmd in commands.values())
             overall_healthy = config_valid and commands_healthy
 
-            result = {
+            result: dict[str, Any] = {
                 "status": "healthy" if overall_healthy else "unhealthy",
                 "config": {
                     "valid": config_valid,
@@ -138,7 +139,7 @@ def create_app():
                 },
                 "commands": commands,
             }
-            return sanitize(result)
+            return cast(dict[str, Any], sanitize(result))
 
         except Exception as e:
             logger.exception("Health check failed")

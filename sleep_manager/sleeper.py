@@ -18,7 +18,7 @@ sleeper_bp = Blueprint("sleeper", __name__, url_prefix="/sleeper")
 def print_config() -> dict[str, Any]:
     """Get sleeper configuration (sanitized for JSON serialization and security)."""
 
-    def sanitize(obj):
+    def sanitize(obj: Any) -> Any:
         if isinstance(obj, dict):
             return {k: sanitize(v) for k, v in obj.items()}
         elif isinstance(obj, list):
@@ -88,6 +88,8 @@ def suspend() -> dict[str, Any]:
                 }
             }
     """
+    systemctl_exec: str = ""
+    suspend_verb: str = ""
     try:
         systemctl_exec = current_app.config["SLEEPER"]["systemctl_command"]
         suspend_verb = current_app.config["SLEEPER"]["suspend_verb"]
@@ -108,15 +110,15 @@ def suspend() -> dict[str, Any]:
             },
         }
     except KeyError as e:
-        raise ConfigurationError(f"Missing configuration: {str(e)}")
+        raise ConfigurationError(f"Missing configuration: {str(e)}") from e
     except Exception as e:
         logger.exception("Failed to suspend system")
         raise SystemCommandError(
             "Failed to suspend system",
-            command=f"{systemctl_exec} {suspend_verb}",
+            command=f"{systemctl_exec} {suspend_verb}".strip(),
             return_code=-1,
             stderr=str(e),
-        )
+        ) from e
 
 
 @sleeper_bp.get("/status")
@@ -182,6 +184,8 @@ def status() -> dict[str, Any]:
                 }
             }
     """
+    systemctl_exec: str = ""
+    status_verb: str = ""
     try:
         systemctl_exec = current_app.config["SLEEPER"]["systemctl_command"]
         status_verb = current_app.config["SLEEPER"]["status_verb"]
@@ -189,7 +193,9 @@ def status() -> dict[str, Any]:
         logger.info(f"Checking system status using sudo {systemctl_exec} {status_verb}")
 
         # run systemd status command
-        _res = subprocess.run([systemctl_exec, status_verb], capture_output=True, text=True)
+        _res: subprocess.CompletedProcess[str] = subprocess.run(
+            [systemctl_exec, status_verb], capture_output=True, text=True
+        )
 
         if _res.returncode != 0:
             raise SystemCommandError(
@@ -211,17 +217,17 @@ def status() -> dict[str, Any]:
             },
         }
     except KeyError as e:
-        raise ConfigurationError(f"Missing configuration: {str(e)}")
+        raise ConfigurationError(f"Missing configuration: {str(e)}") from e
     except SystemCommandError:
         raise
     except Exception as e:
         logger.exception("Failed to get system status")
         raise SystemCommandError(
             "Failed to get system status",
-            command=f"{systemctl_exec} {status_verb}",
+            command=f"{systemctl_exec} {status_verb}".strip(),
             return_code=-1,
             stderr=str(e),
-        )
+        ) from e
 
 
 def sleeper_url() -> str:
@@ -243,4 +249,4 @@ def sleeper_url() -> str:
 
         return f"http://{sleeper_name}.{domain}:{port}/sleeper"
     except KeyError as e:
-        raise ConfigurationError(f"Missing configuration: {str(e)}")
+        raise ConfigurationError(f"Missing configuration: {str(e)}") from e

@@ -1,12 +1,14 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
+from flask.testing import FlaskClient
 
 from sleep_manager import create_app
 
 
 @pytest.fixture
-def app():
+def app() -> Flask:
     """Create a test Flask application."""
     app = create_app()
     app.config["TESTING"] = True
@@ -26,7 +28,7 @@ def app():
 
 
 @pytest.fixture
-def client(app):
+def client(app: Flask) -> FlaskClient:
     """Create a test client."""
     return app.test_client()
 
@@ -34,7 +36,7 @@ def client(app):
 class TestIntegration:
     """Integration tests for the full application."""
 
-    def test_health_endpoint(self, client):
+    def test_health_endpoint(self, client: FlaskClient) -> None:
         """Test the health endpoint."""
         response = client.get("/health")
         assert response.status_code == 200
@@ -43,7 +45,7 @@ class TestIntegration:
         assert "config" in data
         assert "commands" in data
 
-    def test_welcome_endpoint(self, client):
+    def test_welcome_endpoint(self, client: FlaskClient) -> None:
         """Test the welcome endpoint."""
         response = client.get("/")
         assert response.status_code == 200
@@ -51,7 +53,12 @@ class TestIntegration:
 
     @patch("sleep_manager.waker.requests.get")
     @patch("sleep_manager.sleeper.subprocess.run")
-    def test_waker_to_sleeper_communication(self, mock_sleeper_run, mock_waker_get, client):
+    def test_waker_to_sleeper_communication(
+        self,
+        mock_sleeper_run: MagicMock,
+        mock_waker_get: MagicMock,
+        client: FlaskClient,
+    ) -> None:
         """Test waker communicating with sleeper."""
         # Mock sleeper response
         mock_sleeper_response = MagicMock()
@@ -73,12 +80,12 @@ class TestIntegration:
         assert data["op"] == "status"
         assert data["sleeper_response"]["status_code"] == 200
 
-    def test_error_handling(self, client):
+    def test_error_handling(self, client: FlaskClient) -> None:
         """Test error handling for invalid endpoints."""
         response = client.get("/invalid-endpoint")
         assert response.status_code == 404
 
-    def test_api_key_validation(self, client):
+    def test_api_key_validation(self, client: FlaskClient) -> None:
         """Test API key validation across all endpoints."""
         endpoints = [
             "/sleeper/config",
@@ -95,7 +102,7 @@ class TestIntegration:
             assert response.status_code == 401, f"Endpoint {endpoint} should require API key"
 
     @patch("sleep_manager.sleeper.subprocess.run")
-    def test_sleeper_status_flow(self, mock_run, client):
+    def test_sleeper_status_flow(self, mock_run: MagicMock, client: FlaskClient) -> None:
         """Test complete sleeper status flow."""
         mock_result = MagicMock()
         mock_result.returncode = 0
@@ -112,7 +119,7 @@ class TestIntegration:
         assert data["subprocess"]["returncode"] == 0
 
     @patch("sleep_manager.waker.subprocess.run")
-    def test_waker_wake_flow(self, mock_run, client):
+    def test_waker_wake_flow(self, mock_run: MagicMock, client: FlaskClient) -> None:
         """Test complete waker wake flow."""
         mock_result = MagicMock()
         mock_result.returncode = 0
@@ -132,7 +139,7 @@ class TestIntegration:
 class TestConfiguration:
     """Test configuration handling."""
 
-    def test_missing_api_key(self):
+    def test_missing_api_key(self) -> None:
         """Test application with missing API key."""
         app = create_app()
         app.config["TESTING"] = True
@@ -145,7 +152,7 @@ class TestConfiguration:
         # Should return 500 (or 401, depending on your error handling)
         assert response.status_code in (401, 500)
 
-    def test_complete_configuration(self):
+    def test_complete_configuration(self) -> None:
         """Test application with complete configuration."""
         app = create_app()
         app.config["TESTING"] = True

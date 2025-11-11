@@ -1,7 +1,8 @@
 import logging
 import subprocess
+from collections.abc import Callable
 from functools import wraps
-from typing import Any
+from typing import Any, ParamSpec, TypeVar
 
 from flask import current_app, request
 from werkzeug.exceptions import NotFound
@@ -9,6 +10,9 @@ from werkzeug.exceptions import NotFound
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
+
+_P = ParamSpec("_P")
+_R = TypeVar("_R")
 
 
 class SleepManagerError(Exception):
@@ -46,7 +50,7 @@ class NetworkError(SleepManagerError):
         super().__init__(message, status_code=503, details=details)
 
 
-def handle_error(error: Exception) -> tuple[dict, int]:
+def handle_error(error: Exception) -> tuple[dict[str, Any], int]:
     """Global error handler for the application"""
     if isinstance(error, NotFound):
         return {
@@ -75,7 +79,7 @@ def handle_error(error: Exception) -> tuple[dict, int]:
     }, 500
 
 
-def require_api_key(f):
+def require_api_key(f: Callable[_P, _R]) -> Callable[_P, _R]:
     """Decorator to require API key authentication for protected endpoints.
 
     This decorator checks for the presence of a valid API key in the request headers.
@@ -93,7 +97,7 @@ def require_api_key(f):
     """
 
     @wraps(f)
-    def decorated_function(*args, **kwargs):
+    def decorated_function(*args: _P.args, **kwargs: _P.kwargs) -> _R:
         api_key = request.headers.get("X-API-Key")
         if not api_key or api_key != current_app.config["API_KEY"]:
             raise SleepManagerError("Invalid or missing API key", status_code=401)
@@ -115,16 +119,21 @@ def check_command_availability(command: str) -> dict[str, Any]:
             - error: Error message if the command is not available
     """
     try:
-        result = subprocess.run(["which", command], capture_output=True, text=True)
+        result: subprocess.CompletedProcess[str] = subprocess.run(["which", command], capture_output=True, text=True)
         if result.returncode != 0:
             return {"available": False, "error": f"Command {command} not found"}
 
+        command_path = result.stdout.strip()
+
         # Check if the command is executable
-        result = subprocess.run(["test", "-x", result.stdout.strip()], capture_output=True)
+        check_result: subprocess.CompletedProcess[str] = subprocess.run(
+            ["test", "-x", command_path], capture_output=True, text=True
+        )
+        is_executable = check_result.returncode == 0
         return {
-            "available": result.returncode == 0,
-            "path": result.stdout.strip() if result.returncode == 0 else None,
-            "error": None if result.returncode == 0 else f"Command {command} is not executable",
+            "available": is_executable,
+            "path": command_path if is_executable else None,
+            "error": None if is_executable else f"Command {command} is not executable",
         }
     except Exception as e:
         return {"available": False, "error": str(e)}

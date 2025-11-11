@@ -2,13 +2,14 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
+from flask.testing import FlaskClient
 
 from sleep_manager import create_app
 from sleep_manager.core import ConfigurationError
 
 
 @pytest.fixture
-def app():
+def app() -> Flask:
     """Create a test Flask application."""
     app = create_app()
     app.config["TESTING"] = True
@@ -24,7 +25,7 @@ def app():
 
 
 @pytest.fixture
-def client(app):
+def client(app: Flask) -> FlaskClient:
     """Create a test client."""
     return app.test_client()
 
@@ -32,25 +33,25 @@ def client(app):
 class TestSleeperEndpoints:
     """Test sleeper endpoints."""
 
-    def test_config_endpoint_without_api_key(self, client):
+    def test_config_endpoint_without_api_key(self, client: FlaskClient) -> None:
         """Test config endpoint without API key returns 401."""
         response = client.get("/sleeper/config")
         assert response.status_code == 401
 
-    def test_config_endpoint_with_api_key(self, client):
+    def test_config_endpoint_with_api_key(self, client: FlaskClient) -> None:
         """Test config endpoint with valid API key."""
         response = client.get("/sleeper/config", headers={"X-API-Key": "test-api-key"})
         assert response.status_code == 200
         data = response.get_json()
         assert "SLEEPER" in data
 
-    def test_suspend_endpoint_without_api_key(self, client):
+    def test_suspend_endpoint_without_api_key(self, client: FlaskClient) -> None:
         """Test suspend endpoint without API key returns 401."""
         response = client.get("/sleeper/suspend")
         assert response.status_code == 401
 
     @patch("sleep_manager.sleeper.subprocess.Popen")
-    def test_suspend_endpoint_success(self, mock_popen, client):
+    def test_suspend_endpoint_success(self, mock_popen: MagicMock, client: FlaskClient) -> None:
         """Test suspend endpoint with valid API key."""
         mock_popen.return_value = MagicMock()
 
@@ -61,7 +62,7 @@ class TestSleeperEndpoints:
         assert "subprocess" in data
 
     @patch("sleep_manager.sleeper.subprocess.run")
-    def test_status_endpoint_success(self, mock_run, client):
+    def test_status_endpoint_success(self, mock_run: MagicMock, client: FlaskClient) -> None:
         """Test status endpoint with valid API key."""
         mock_result = MagicMock()
         mock_result.returncode = 0
@@ -77,7 +78,7 @@ class TestSleeperEndpoints:
         assert data["status"] == "running"
 
     @patch("sleep_manager.sleeper.subprocess.run")
-    def test_status_endpoint_failure(self, mock_run, client):
+    def test_status_endpoint_failure(self, mock_run: MagicMock, client: FlaskClient) -> None:
         """Test status endpoint when systemctl fails."""
         mock_result = MagicMock()
         mock_result.returncode = 1
@@ -94,7 +95,7 @@ class TestSleeperEndpoints:
 class TestSleeperConfiguration:
     """Test sleeper configuration handling."""
 
-    def test_missing_configuration(self):
+    def test_missing_configuration(self) -> None:
         """Test handling of missing configuration."""
         app = Flask(__name__)
         app.config["TESTING"] = True
@@ -107,7 +108,7 @@ class TestSleeperConfiguration:
             with pytest.raises(ConfigurationError):
                 sleeper_url()
 
-    def test_sleeper_url_generation(self):
+    def test_sleeper_url_generation(self) -> None:
         """Test sleeper URL generation."""
         app = Flask(__name__)
         app.config["TESTING"] = True

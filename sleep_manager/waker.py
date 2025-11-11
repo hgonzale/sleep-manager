@@ -57,7 +57,7 @@ def print_config() -> dict[str, Any]:
                 "wol_exec": "/usr/sbin/etherwake"
             }
     """
-    return current_app.config["WAKER"]
+    return dict(current_app.config["WAKER"])
 
 
 @waker_bp.get("/wake")
@@ -123,15 +123,19 @@ def wake() -> dict[str, Any]:
                 }
             }
     """
+    sleeper_mac: str = ""
+    wol_exec: str = ""
     try:
-        sleeper_name = current_app.config["SLEEPER"]["name"]
+        sleeper_name: str = current_app.config["SLEEPER"]["name"]
         sleeper_mac = current_app.config["SLEEPER"]["mac_address"]
         wol_exec = current_app.config["WAKER"]["wol_exec"]
 
         logger.info(f"Attempting to wake {sleeper_name} using {wol_exec} {sleeper_mac}")
 
         # run wake command and get return_code
-        _res = subprocess.run(["sudo", wol_exec, sleeper_mac], capture_output=True, text=True)
+        _res: subprocess.CompletedProcess[str] = subprocess.run(
+            ["sudo", wol_exec, sleeper_mac], capture_output=True, text=True
+        )
 
         if _res.returncode != 0:
             raise SystemCommandError(
@@ -156,7 +160,7 @@ def wake() -> dict[str, Any]:
             },
         }
     except KeyError as e:
-        raise ConfigurationError(f"Missing configuration: {str(e)}")
+        raise ConfigurationError(f"Missing configuration: {str(e)}") from e
     except SystemCommandError:
         raise
     except Exception as e:
@@ -166,7 +170,7 @@ def wake() -> dict[str, Any]:
             command=f"{wol_exec} {sleeper_mac}",
             return_code=-1,
             stderr=str(e),
-        )
+        ) from e
 
 
 @waker_bp.get("/suspend")
@@ -332,7 +336,7 @@ def waker_url() -> str:
 
         return f"http://{waker_name}.{domain}:{port}/waker"
     except KeyError as e:
-        raise ConfigurationError(f"Missing configuration: {str(e)}")
+        raise ConfigurationError(f"Missing configuration: {str(e)}") from e
 
 
 def sleeper_request(endpoint: str) -> dict[str, Any]:
@@ -386,7 +390,7 @@ def sleeper_request(endpoint: str) -> dict[str, Any]:
         request_timeout = max(current_app.config["DEFAULT_REQUEST_TIMEOUT"], 3.05)
         logger.info(f"Making request to sleeper at {url}/{endpoint}")
 
-        _res = requests.get(
+        _res: requests.Response = requests.get(
             f"{url}/{endpoint}",
             timeout=request_timeout,
             headers={"X-API-Key": current_app.config["API_KEY"]},

@@ -87,6 +87,7 @@ ping sleeper_url
 ### Common Issues
 
 **Service won't start**:
+
 ```bash
 sudo systemctl status sleep-manager-sleeper
 sudo journalctl -u sleep-manager-sleeper -n 50
@@ -94,6 +95,7 @@ sudo cat /usr/local/sleep-manager/config/sleep-manager-config.json
 ```
 
 **Wake-on-LAN not working**:
+
 ```bash
 sudo ethtool eth0 | grep -i wake
 sudo etherwake AA:BB:CC:DD:EE:FF
@@ -101,6 +103,7 @@ sudo etherwake AA:BB:CC:DD:EE:FF
 ```
 
 **Network issues**:
+
 ```bash
 nslookup sleeper_url
 ping sleeper_url
@@ -143,7 +146,7 @@ uv run ruff check .
 
 ## File Locations
 
-```
+```text
 /usr/local/sleep-manager/           # Application directory
 ├── config/                         # Configuration files
 ├── venv/                          # Python virtual environment
@@ -191,4 +194,4 @@ netstat -tlnp | grep 51339
 sudo ./scripts/setup-system.sh update-deps
 sudo systemctl restart sleep-manager-*
 sudo journalctl --vacuum-time=7d
-``` 
+```
