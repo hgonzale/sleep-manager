@@ -83,6 +83,30 @@ curl -H "X-API-Key: your-api-key" http://waker_url:51339/waker/status
 - [Quick Reference](QUICK_REFERENCE.md) - Common commands
 - [API Documentation](docs/_build/html/index.html) - Complete API reference (build with `./scripts/build-docs.sh build`)
 
+## Development Environment
+
+The repository uses [uv](https://github.com/astral-sh/uv) for dependency management, [tox](https://tox.wiki/) for task automation, [Ruff](https://docs.astral.sh/ruff/) for formatting/linting, and [mypy](https://mypy-lang.org/) for static typing. After installing `uv`, run:
+
+```bash
+uv sync --group dev
+```
+
+Common development tasks:
+
+```bash
+# Run the default test matrix
+uv run tox
+
+# Target specific environments
+uv run tox -e py311         # Unit tests on Python 3.11
+uv run tox -e lint          # Ruff lint checks
+uv run tox -e typecheck     # mypy
+
+# Format and lint quickly
+uv run ruff format .
+uv run ruff check .
+```
+
 ## HomeKit Integration
 
 See [homebridge-sleep-manager/](homebridge-sleep-manager/) for HomeKit integration using the `homebridge-http-switch` plugin.

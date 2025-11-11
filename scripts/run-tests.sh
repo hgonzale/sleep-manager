@@ -33,21 +33,37 @@ print_header() {
 }
 
 # Function to check if virtual environment exists
-check_venv() {
+USE_UV=0
+
+setup_environment() {
+    if command -v uv >/dev/null 2>&1; then
+        USE_UV=1
+        print_status "Using uv to run tests with the dev dependency group."
+        return
+    fi
+
     if [[ ! -d "$PROJECT_DIR/venv" ]]; then
-        print_error "Virtual environment not found. Please create one first:"
-        print_error "  python3 -m venv venv"
-        print_error "  source venv/bin/activate"
-        print_error "  pip install -e .[dev]"
+        print_error "Virtual environment not found. Install dependencies with uv or create a venv:"
+        print_error "  uv sync --group dev"
+        print_error "  # or fallback"
+        print_error "  python3 -m venv venv && source venv/bin/activate && pip install -e .[dev]"
         exit 1
     fi
-    
-    # Check if pytest is installed
+
     if ! "$PROJECT_DIR/venv/bin/python" -c "import pytest" 2>/dev/null; then
-        print_error "pytest not found in virtual environment. Please install dev dependencies:"
-        print_error "  source venv/bin/activate"
-        print_error "  pip install -e .[dev]"
+        print_error "pytest not found in virtual environment. Install dependencies using uv or pip:"
+        print_error "  uv sync --group dev"
+        print_error "  # or"
+        print_error "  source venv/bin/activate && pip install -e .[dev]"
         exit 1
+    fi
+}
+
+run_pytest() {
+    if [[ "$USE_UV" -eq 1 ]]; then
+        uv run --group dev pytest "$@"
+    else
+        "$PROJECT_DIR/venv/bin/python" -m pytest "$@"
     fi
 }
 
@@ -60,29 +76,27 @@ run_tests() {
     
     cd "$PROJECT_DIR"
     
-    # Use the virtual environment's python explicitly
-    local python_cmd="$PROJECT_DIR/venv/bin/python"
-    
     case "$test_type" in
         "unit")
-            "$python_cmd" -m pytest tests/test_sleeper.py tests/test_waker.py -v
+            run_pytest tests/test_sleeper.py tests/test_waker.py -v
             ;;
         "integration")
-            "$python_cmd" -m pytest tests/test_integration.py -v
+            run_pytest tests/test_integration.py -v
             ;;
         "all")
-            "$python_cmd" -m pytest tests/ -v
+            run_pytest tests/ -v
             ;;
         "coverage")
-            # Check if pytest-cov is available
-            if ! "$python_cmd" -c "import pytest_cov" 2>/dev/null; then
-                print_warning "pytest-cov not found. Installing it..."
-                "$python_cmd" -m pip install pytest-cov
+            if [[ "$USE_UV" -ne 1 ]]; then
+                if ! "$PROJECT_DIR/venv/bin/python" -c "import pytest_cov" 2>/dev/null; then
+                    print_warning "pytest-cov not found. Installing it..."
+                    "$PROJECT_DIR/venv/bin/python" -m pip install pytest-cov
+                fi
             fi
-            "$python_cmd" -m pytest tests/ --cov=sleep_manager --cov-report=html --cov-report=term-missing
+            run_pytest tests/ --cov=sleep_manager --cov-report=html --cov-report=term-missing
             ;;
         "quick")
-            "$python_cmd" -m pytest tests/ -x -v
+            run_pytest tests/ -x -v
             ;;
         *)
             print_error "Unknown test type: $test_type"
@@ -123,8 +137,7 @@ main() {
         exit 1
     fi
     
-    # Check virtual environment
-    check_venv
+    setup_environment
     
     # Parse command line arguments
     case "${1:-all}" in

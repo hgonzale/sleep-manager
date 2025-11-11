@@ -124,16 +124,21 @@ systemctl list-units --type=service | grep sleep-manager
 ## Development
 
 ```bash
-# Run tests
-./scripts/run-tests.sh
-python -m pytest tests/test_sleeper.py
-python -m pytest tests/test_waker.py
+# Sync dev dependencies
+uv sync --group dev
 
-# Development setup
-python3 -m venv venv
-source venv/bin/activate
-pip install -e .[dev]
-pytest
+# Run helper script (auto-detects uv)
+./scripts/run-tests.sh
+
+# Direct tox usage
+uv run tox                  # full matrix
+uv run tox -e py311         # targeted unit tests
+uv run tox -e lint          # Ruff lint
+uv run tox -e typecheck     # mypy
+
+# Format/lint quickly
+uv run ruff format .
+uv run ruff check .
 ```
 
 ## File Locations
