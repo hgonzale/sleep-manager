@@ -34,7 +34,6 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0.0",
-    "pytest-cov>=4.0.0",
     "mypy>=1.0.0",
     "ruff>=0.6.0",
     "tox>=4.14.0",
@@ -51,7 +50,6 @@ docs = [
 [dependency-groups]
 dev = [
     "pytest>=7.0.0",
-    "pytest-cov>=4.0.0",
     "mypy>=1.0.0",
     "ruff>=0.6.0",
     "tox>=4.14.0",
@@ -86,9 +84,6 @@ python_functions = ["test_*"]
 addopts = [
     "--strict-markers",
     "--strict-config",
-    "--cov=sleep-manager",
-    "--cov-report=term-missing",
-    "--cov-report=html",
 ]
 markers = [
     "unit: Unit tests",

@@ -7,6 +7,8 @@ from flask.testing import FlaskClient
 from sleep_manager import create_app
 from sleep_manager.core import ConfigurationError
 
+pytestmark = pytest.mark.unit
+
 
 @pytest.fixture
 def app() -> Flask:

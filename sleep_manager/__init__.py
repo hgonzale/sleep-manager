@@ -1,4 +1,6 @@
 import logging
+import os
+from pathlib import Path
 from typing import Any, cast
 
 from flask import Flask, current_app, json
@@ -12,6 +14,31 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(level
 logger = logging.getLogger(__name__)
 
 
+CONFIG_ENV_VAR = "SLEEP_MANAGER_CONFIG_PATH"
+DEFAULT_CONFIG_PATH = Path("/usr/local/sleep-manager/config/sleep-manager-config.json")
+EXAMPLE_CONFIG_PATH = (
+    Path(__file__).resolve().parents[1] / "config" / "sleep-manager-config.json.example"
+)
+
+
+def _resolve_config_path() -> Path:
+    env_path = os.environ.get(CONFIG_ENV_VAR)
+    config_path = Path(env_path) if env_path else DEFAULT_CONFIG_PATH
+    if config_path.exists():
+        return config_path
+    if EXAMPLE_CONFIG_PATH.exists():
+        logger.warning(
+            "Config file %s not found; falling back to example config %s",
+            config_path,
+            EXAMPLE_CONFIG_PATH,
+        )
+        return EXAMPLE_CONFIG_PATH
+    raise FileNotFoundError(
+        f"Configuration file not found at {config_path!s}; "
+        f"set {CONFIG_ENV_VAR} to a valid config path"
+    )
+
+
 def create_app() -> Flask:
     """Create and configure the Flask application.
 
@@ -22,7 +49,10 @@ def create_app() -> Flask:
         Flask: The configured Flask application instance
 
     Configuration:
-        The app loads configuration from 'config/sleep-manager-config.json'
+        The app loads configuration from the path defined in
+        `SLEEP_MANAGER_CONFIG_PATH`, defaults to
+        `/usr/local/sleep-manager/config/sleep-manager-config.json`, and falls
+        back to `config/sleep-manager-config.json.example` inside the repository.
 
     Routes:
         - GET /: Welcome message
@@ -33,11 +63,8 @@ def create_app() -> Flask:
     # create and configure the app
     app = Flask(__name__, instance_relative_config=False)
 
-    app.config.from_file(
-        "/usr/local/sleep-manager/config/sleep-manager-config.json",
-        load=json.load,
-        text=True,
-    )
+    config_path = _resolve_config_path()
+    app.config.from_file(config_path, load=json.load, text=True)
     logger.info(f"Loaded config: {app.config.get('SLEEPER')}")
 
     # Register error handlers

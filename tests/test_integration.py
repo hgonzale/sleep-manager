@@ -6,6 +6,8 @@ from flask.testing import FlaskClient
 
 from sleep_manager import create_app
 
+pytestmark = pytest.mark.integration
+
 
 @pytest.fixture
 def app() -> Flask:
