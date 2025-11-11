@@ -20,11 +20,10 @@ Step 1: Clone and Setup
       git clone <repository-url>
       cd sleep-manager
 
-2. **Make scripts executable**:
+2. **Make the setup script executable**:
    .. code-block:: bash
 
       chmod +x scripts/setup-system.sh
-      chmod +x scripts/build-docs.sh
 
 Step 2: Setup Machines
 ----------------------

@@ -229,10 +229,10 @@ setup_sleeper() {
     python3 -m venv venv
     chown -R sleep-manager:sleep-manager venv
     
-    # Install dependencies
+    # Install dependencies via the project metadata
     print_status "Installing Python dependencies..."
     sudo -u sleep-manager /usr/local/sleep-manager/venv/bin/pip install --upgrade pip
-    sudo -u sleep-manager /usr/local/sleep-manager/venv/bin/pip install flask>=2.3.0 requests>=2.31.0
+    sudo -u sleep-manager /usr/local/sleep-manager/venv/bin/pip install --upgrade -e .
     
     print_status "Virtual environment setup complete"
     
@@ -377,7 +377,7 @@ update_dependencies() {
     
     cd /usr/local/sleep-manager
     sudo -u sleep-manager /usr/local/sleep-manager/venv/bin/pip install --upgrade pip
-    sudo -u sleep-manager /usr/local/sleep-manager/venv/bin/pip install flask>=2.3.0 requests>=2.31.0 --upgrade
+    sudo -u sleep-manager /usr/local/sleep-manager/venv/bin/pip install --upgrade -e .
     
     print_status "Dependencies updated successfully!"
 }

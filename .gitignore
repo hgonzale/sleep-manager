@@ -52,6 +52,7 @@ coverage.xml
 
 # virtual environment
 venv
+.venv
 
 # macos
 .DS_Store

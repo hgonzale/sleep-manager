@@ -85,7 +85,7 @@ curl -H "X-API-Key: your-api-key" http://waker_url:51339/waker/status
 - [Deployment Guide](DEPLOYMENT.md) - Detailed setup instructions
 - [System Requirements](SYSTEM_REQUIREMENTS.md) - Requirements and compatibility
 - [Quick Reference](QUICK_REFERENCE.md) - Common commands
-- [API Documentation](docs/_build/html/index.html) - Complete API reference (build with `./scripts/build-docs.sh build`)
+- [API Documentation](docs/_build/html/index.html) - Complete API reference (build with `uv run tox -e docs` or `python -m sphinx -b html docs docs/_build/html`)
 
 ## Development Environment
 

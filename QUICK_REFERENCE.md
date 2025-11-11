@@ -144,6 +144,12 @@ uv run ruff format .
 uv run ruff check .
 ```
 
+## Documentation
+
+```bash
+uv run tox -e docs
+```
+
 ## File Locations
 
 ```text
