@@ -67,10 +67,9 @@ docs = [
 sleep-manager = "sleep_manager:create_app"
 
 [project.urls]
-Homepage = "https://github.com/example/sleep-manager"
-Documentation = "https://sleep-manager.readthedocs.io/"
-Repository = "https://github.com/example/sleep-manager"
-Bug-Tracker = "https://github.com/example/sleep-manager/issues"
+Homepage = "https://github.com/hgonzale/sleep-manager"
+Repository = "https://github.com/hgonzale/sleep-manager"
+Bug-Tracker = "https://github.com/hgonzale/sleep-manager/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]
