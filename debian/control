@@ -1,0 +1,15 @@
+Source: sleep-manager
+Section: admin
+Priority: optional
+Maintainer: Sleep Manager Maintainers <ops@example.com>
+Build-Depends: debhelper-compat (= 13), rsync
+Standards-Version: 4.6.2
+Rules-Requires-Root: no
+Homepage: https://hgonzale.github.io/sleep-manager/
+
+Package: sleep-manager
+Architecture: all
+Depends: python3 (>= 3.11), python3-venv, python3-pip, sudo, systemd, etherwake, ethtool
+Description: Two-machine sleep/wake control over HTTP
+ Sleep Manager provides sleeper and waker roles in a single Flask service
+ to suspend a machine and send Wake-on-LAN packets on a trusted LAN.

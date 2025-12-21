@@ -1,0 +1,3 @@
+# Managed by sleep-manager package
+sleep-manager ALL=(root) NOPASSWD: /usr/bin/systemctl suspend, /usr/bin/systemctl is-system-running
+sleep-manager ALL=(root) NOPASSWD: /usr/sbin/etherwake

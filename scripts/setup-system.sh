@@ -1,7 +1,8 @@
 #!/bin/bash
 
-# Sleep Manager System Setup Script
-# This script helps configure the system requirements for the sleep manager
+# Sleep Manager System Setup Script (Legacy)
+# This script is a fallback for non-Debian/manual installs and is not the
+# preferred path on Debian (use the .deb package instead). It assumes systemd.
 
 set -e
 
@@ -148,7 +149,7 @@ check_hostname_resolution() {
     print_status "Checking hostname resolution..."
     
     # Check if configuration file exists
-    if [[ ! -f /usr/local/sleep-manager/config/sleep-manager-config.json ]]; then
+    if [[ ! -f /etc/sleep-manager/sleep-manager-config.json ]]; then
         print_warning "Configuration file not found. Skipping hostname resolution check."
         print_warning "Please configure the application first, then run this check again."
         return 0
@@ -159,12 +160,12 @@ check_hostname_resolution() {
     local sleeper_hostname=""
     
     if command_exists jq; then
-        waker_hostname=$(jq -r '.WAKER.name' /usr/local/sleep-manager/config/sleep-manager-config.json 2>/dev/null || echo "")
-        sleeper_hostname=$(jq -r '.SLEEPER.name' /usr/local/sleep-manager/config/sleep-manager-config.json 2>/dev/null || echo "")
+        waker_hostname=$(jq -r '.WAKER.name' /etc/sleep-manager/sleep-manager-config.json 2>/dev/null || echo "")
+        sleeper_hostname=$(jq -r '.SLEEPER.name' /etc/sleep-manager/sleep-manager-config.json 2>/dev/null || echo "")
     else
         # Fallback to grep if jq is not available
-        waker_hostname=$(grep -o '"name": *"[^"]*"' /usr/local/sleep-manager/config/sleep-manager-config.json | head -1 | cut -d'"' -f4 2>/dev/null || echo "")
-        sleeper_hostname=$(grep -o '"name": *"[^"]*"' /usr/local/sleep-manager/config/sleep-manager-config.json | tail -1 | cut -d'"' -f4 2>/dev/null || echo "")
+        waker_hostname=$(grep -o '"name": *"[^"]*"' /etc/sleep-manager/sleep-manager-config.json | head -1 | cut -d'"' -f4 2>/dev/null || echo "")
+        sleeper_hostname=$(grep -o '"name": *"[^"]*"' /etc/sleep-manager/sleep-manager-config.json | tail -1 | cut -d'"' -f4 2>/dev/null || echo "")
     fi
     
     if [[ -z "$waker_hostname" || -z "$sleeper_hostname" ]]; then
@@ -243,7 +244,7 @@ setup_sleeper() {
     # Create sleep-manager user and group
     print_status "Creating sleep-manager user and group..."
     if ! id "sleep-manager" &>/dev/null; then
-        useradd --system --user-group --shell /bin/false --home-dir /usr/local/sleep-manager sleep-manager
+        useradd --system --user-group --shell /bin/false --home-dir /usr/lib/sleep-manager sleep-manager
         print_status "Created sleep-manager user"
     else
         print_status "sleep-manager user already exists"
@@ -251,38 +252,54 @@ setup_sleeper() {
     
     # Create application directory
     print_status "Setting up application directory..."
-    mkdir -p /usr/local/sleep-manager
+    mkdir -p /usr/lib/sleep-manager
     
     # Copy project files, excluding development-specific directories
     print_status "Copying project files..."
     cd "$PROJECT_DIR"
     for item in *; do
         # Skip venv, .git, and other development directories
-        if [[ "$item" != "venv" && "$item" != ".git" && "$item" != "__pycache__" && "$item" != "*.pyc" ]]; then
+        if [[ "$item" != "venv" && "$item" != ".git" && "$item" != "debian" && "$item" != "__pycache__" && "$item" != "*.pyc" ]]; then
             if [[ -d "$item" ]]; then
-                cp -r "$item" /usr/local/sleep-manager/
+                cp -r "$item" /usr/lib/sleep-manager/
             else
-                cp "$item" /usr/local/sleep-manager/
+                cp "$item" /usr/lib/sleep-manager/
             fi
         fi
     done
     
     # Setup configuration directory
     print_status "Setting up configuration directory..."
-    mkdir -p /usr/local/sleep-manager/config
+    mkdir -p /etc/sleep-manager
+
+    if [[ ! -f /etc/sleep-manager/sleep-manager-config.json ]]; then
+        if [[ -f /usr/lib/sleep-manager/config/sleep-manager-config.json ]]; then
+            cp /usr/lib/sleep-manager/config/sleep-manager-config.json /etc/sleep-manager/sleep-manager-config.json
+            chown root:sleep-manager /etc/sleep-manager/sleep-manager-config.json
+            chmod 0640 /etc/sleep-manager/sleep-manager-config.json
+            print_status "Migrated existing config to /etc/sleep-manager/sleep-manager-config.json"
+        elif [[ -f /usr/local/sleep-manager/config/sleep-manager-config.json ]]; then
+            cp /usr/local/sleep-manager/config/sleep-manager-config.json /etc/sleep-manager/sleep-manager-config.json
+            chown root:sleep-manager /etc/sleep-manager/sleep-manager-config.json
+            chmod 0640 /etc/sleep-manager/sleep-manager-config.json
+            print_status "Migrated existing config to /etc/sleep-manager/sleep-manager-config.json"
+        fi
+    fi
     
     # Copy example configuration file if it exists
     if [[ -f "$PROJECT_DIR/config/sleep-manager-config.json.example" ]]; then
-        cp "$PROJECT_DIR/config/sleep-manager-config.json.example" /usr/local/sleep-manager/config/sleep-manager-config.json.example
-        print_status "Copied example configuration file to /usr/local/sleep-manager/config/"
-        print_warning "Please edit /usr/local/sleep-manager/config/sleep-manager-config.json.example and rename it to sleep-manager-config.json"
+        cp "$PROJECT_DIR/config/sleep-manager-config.json.example" /etc/sleep-manager/sleep-manager-config.json.example
+        print_status "Copied example configuration file to /etc/sleep-manager/"
+        print_warning "Please edit /etc/sleep-manager/sleep-manager-config.json.example and rename it to sleep-manager-config.json"
+        chown root:sleep-manager /etc/sleep-manager/sleep-manager-config.json.example
+        chmod 0644 /etc/sleep-manager/sleep-manager-config.json.example
     else
-        print_warning "Example configuration file not found. Please create /usr/local/sleep-manager/config/sleep-manager-config.json manually."
+        print_warning "Example configuration file not found. Please create /etc/sleep-manager/sleep-manager-config.json manually."
     fi
     
-    chown -R sleep-manager:sleep-manager /usr/local/sleep-manager
-    chmod 755 /usr/local/sleep-manager
-    
+    chown -R sleep-manager:sleep-manager /usr/lib/sleep-manager
+    chmod 755 /usr/lib/sleep-manager
+
     # Create and configure virtual environment
     print_status "Setting up Python virtual environment..."
     if ! command_exists python3; then
@@ -291,14 +308,14 @@ setup_sleeper() {
     fi
     
     # Create virtual environment
-    cd /usr/local/sleep-manager
+    cd /usr/lib/sleep-manager
     python3 -m venv venv
     chown -R sleep-manager:sleep-manager venv
     
     # Install dependencies via the project metadata
     print_status "Installing Python dependencies..."
-    sudo -u sleep-manager /usr/local/sleep-manager/venv/bin/pip install --upgrade pip
-    sudo -u sleep-manager /usr/local/sleep-manager/venv/bin/pip install --upgrade -e .
+    sudo -u sleep-manager /usr/lib/sleep-manager/venv/bin/pip install --upgrade pip
+    sudo -u sleep-manager /usr/lib/sleep-manager/venv/bin/pip install --upgrade -e .
     
     print_status "Virtual environment setup complete"
     
@@ -343,7 +360,7 @@ setup_sleeper() {
     
     print_status "Sleeper setup complete!"
     print_warning "Don't forget to:"
-    print_warning "1. Configure the application in /usr/local/sleep-manager/config/"
+    print_warning "1. Configure the application in /etc/sleep-manager/"
     print_warning "2. Start the service with: systemctl start sleep-manager-sleeper"
 }
 
@@ -354,7 +371,7 @@ setup_waker() {
     # Create sleep-manager user and group
     print_status "Creating sleep-manager user and group..."
     if ! id "sleep-manager" &>/dev/null; then
-        useradd --system --user-group --shell /bin/false --home-dir /usr/local/sleep-manager sleep-manager
+        useradd --system --user-group --shell /bin/false --home-dir /usr/lib/sleep-manager sleep-manager
         print_status "Created sleep-manager user"
     else
         print_status "sleep-manager user already exists"
@@ -362,24 +379,53 @@ setup_waker() {
     
     # Create application directory
     print_status "Setting up application directory..."
-    mkdir -p /usr/local/sleep-manager
+    mkdir -p /usr/lib/sleep-manager
     
     # Copy project files, excluding development-specific directories
     print_status "Copying project files..."
     cd "$PROJECT_DIR"
     for item in *; do
         # Skip venv, .git, and other development directories
-        if [[ "$item" != "venv" && "$item" != ".git" && "$item" != "__pycache__" && "$item" != "*.pyc" ]]; then
+        if [[ "$item" != "venv" && "$item" != ".git" && "$item" != "debian" && "$item" != "__pycache__" && "$item" != "*.pyc" ]]; then
             if [[ -d "$item" ]]; then
-                cp -r "$item" /usr/local/sleep-manager/
+                cp -r "$item" /usr/lib/sleep-manager/
             else
-                cp "$item" /usr/local/sleep-manager/
+                cp "$item" /usr/lib/sleep-manager/
             fi
         fi
     done
+
+    # Setup configuration directory
+    print_status "Setting up configuration directory..."
+    mkdir -p /etc/sleep-manager
+
+    if [[ ! -f /etc/sleep-manager/sleep-manager-config.json ]]; then
+        if [[ -f /usr/lib/sleep-manager/config/sleep-manager-config.json ]]; then
+            cp /usr/lib/sleep-manager/config/sleep-manager-config.json /etc/sleep-manager/sleep-manager-config.json
+            chown root:sleep-manager /etc/sleep-manager/sleep-manager-config.json
+            chmod 0640 /etc/sleep-manager/sleep-manager-config.json
+            print_status "Migrated existing config to /etc/sleep-manager/sleep-manager-config.json"
+        elif [[ -f /usr/local/sleep-manager/config/sleep-manager-config.json ]]; then
+            cp /usr/local/sleep-manager/config/sleep-manager-config.json /etc/sleep-manager/sleep-manager-config.json
+            chown root:sleep-manager /etc/sleep-manager/sleep-manager-config.json
+            chmod 0640 /etc/sleep-manager/sleep-manager-config.json
+            print_status "Migrated existing config to /etc/sleep-manager/sleep-manager-config.json"
+        fi
+    fi
+
+    # Copy example configuration file if it exists
+    if [[ -f "$PROJECT_DIR/config/sleep-manager-config.json.example" ]]; then
+        cp "$PROJECT_DIR/config/sleep-manager-config.json.example" /etc/sleep-manager/sleep-manager-config.json.example
+        print_status "Copied example configuration file to /etc/sleep-manager/"
+        print_warning "Please edit /etc/sleep-manager/sleep-manager-config.json.example and rename it to sleep-manager-config.json"
+        chown root:sleep-manager /etc/sleep-manager/sleep-manager-config.json.example
+        chmod 0644 /etc/sleep-manager/sleep-manager-config.json.example
+    else
+        print_warning "Example configuration file not found. Please create /etc/sleep-manager/sleep-manager-config.json manually."
+    fi
     
-    chown -R sleep-manager:sleep-manager /usr/local/sleep-manager
-    chmod 755 /usr/local/sleep-manager
+    chown -R sleep-manager:sleep-manager /usr/lib/sleep-manager
+    chmod 755 /usr/lib/sleep-manager
     
     # Create and configure virtual environment
     print_status "Setting up Python virtual environment..."
@@ -389,14 +435,14 @@ setup_waker() {
     fi
     
     # Create virtual environment
-    cd /usr/local/sleep-manager
+    cd /usr/lib/sleep-manager
     python3 -m venv venv
     chown -R sleep-manager:sleep-manager venv
     
     # Install dependencies
     print_status "Installing Python dependencies..."
-    sudo -u sleep-manager /usr/local/sleep-manager/venv/bin/pip install --upgrade pip
-    sudo -u sleep-manager /usr/local/sleep-manager/venv/bin/pip install -e .
+    sudo -u sleep-manager /usr/lib/sleep-manager/venv/bin/pip install --upgrade pip
+    sudo -u sleep-manager /usr/lib/sleep-manager/venv/bin/pip install -e .
     
     print_status "Virtual environment setup complete"
     
@@ -432,7 +478,7 @@ setup_waker() {
     
     print_status "Waker setup complete!"
     print_warning "Don't forget to:"
-    print_warning "1. Configure the application in /usr/local/sleep-manager/config/"
+    print_warning "1. Configure the application in /etc/sleep-manager/"
     print_warning "2. Start the service with: systemctl start sleep-manager-waker"
 }
 
@@ -440,14 +486,14 @@ setup_waker() {
 update_dependencies() {
     print_status "Updating Python dependencies..."
     
-    if [[ ! -d /usr/local/sleep-manager/venv ]]; then
+    if [[ ! -d /usr/lib/sleep-manager/venv ]]; then
         print_error "Virtual environment not found. Please run setup first."
         exit 1
     fi
     
-    cd /usr/local/sleep-manager
-    sudo -u sleep-manager /usr/local/sleep-manager/venv/bin/pip install --upgrade pip
-    sudo -u sleep-manager /usr/local/sleep-manager/venv/bin/pip install --upgrade -e .
+    cd /usr/lib/sleep-manager
+    sudo -u sleep-manager /usr/lib/sleep-manager/venv/bin/pip install --upgrade pip
+    sudo -u sleep-manager /usr/lib/sleep-manager/venv/bin/pip install --upgrade -e .
     
     print_status "Dependencies updated successfully!"
 }
@@ -543,7 +589,7 @@ uninstall_all() {
     fi
     
     print_status "Complete uninstall finished!"
-    print_warning "Application files in /usr/local/sleep-manager have been preserved."
+    print_warning "Application files in /usr/lib/sleep-manager have been preserved."
     print_warning "To reinstall, run the setup script again."
 }
 
@@ -640,8 +686,8 @@ show_status() {
     fi
     
     # Check application directory
-    if [[ -d /usr/local/sleep-manager ]]; then
-        print_status "✓ Application directory: INSTALLED (/usr/local/sleep-manager)"
+    if [[ -d /usr/lib/sleep-manager ]]; then
+        print_status "✓ Application directory: INSTALLED (/usr/lib/sleep-manager)"
     else
         print_warning "✗ Application directory: NOT INSTALLED"
     fi
@@ -775,6 +821,8 @@ ethtool_available() {
 
 # Main script
 main() {
+    print_warning "Legacy installer: prefer the .deb on Debian; use manual steps on other distros."
+    print_warning "This script is best-effort and may not work on all non-Debian systems."
     # Check if no arguments provided
     if [[ $# -eq 0 ]]; then
         show_usage

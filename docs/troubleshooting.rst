@@ -17,7 +17,7 @@ Check configuration
 
 .. code-block:: bash
 
-   sudo cat /usr/local/sleep-manager/config/sleep-manager-config.json
+   sudo cat /etc/sleep-manager/sleep-manager-config.json
 
 Common network issues
 ---------------------
@@ -44,4 +44,4 @@ Permission errors
 
 .. code-block:: bash
 
-   sudo chown -R sleep-manager:sleep-manager /usr/local/sleep-manager
+   sudo chown -R sleep-manager:sleep-manager /usr/lib/sleep-manager

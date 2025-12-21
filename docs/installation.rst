@@ -19,44 +19,39 @@ System Requirements
 
 * systemd for service management
 * Wake-on-LAN capable network interface (sleeper)
-* etherwake package on the waker
+* etherwake package installed
+* ethtool package installed
 
-Quick Installation
-------------------
+Debian Package Installation
+---------------------------
 
-1. **Clone the repository**:
+If you prefer a package-based install on Debian, build and install the .deb:
+
+1. **Build the package**:
    .. code-block:: bash
 
-      git clone <repository-url>
-      cd sleep-manager
+      ./scripts/build-deb.sh
 
-2. **Make setup script executable**:
+2. **Install the package**:
    .. code-block:: bash
 
-      chmod +x scripts/setup-system.sh
+      sudo dpkg -i dist/deb/sleep-manager_*.deb
 
-3. **Setup Sleeper machine**:
+3. **Configure the application**:
    .. code-block:: bash
 
-      sudo ./scripts/setup-system.sh sleeper
+      sudo nano /etc/sleep-manager/sleep-manager-config.json
 
-4. **Setup Waker machine**:
-   .. code-block:: bash
-
-      sudo ./scripts/setup-system.sh waker
-
-5. **Configure the application**:
-   .. code-block:: bash
-
-      sudo nano /usr/local/sleep-manager/config/sleep-manager-config.json
-
-6. **Start services**:
+4. **Start services**:
    .. code-block:: bash
 
       sudo systemctl start sleep-manager-sleeper
       sudo systemctl start sleep-manager-waker
-      sudo systemctl enable sleep-manager-sleeper
-      sudo systemctl enable sleep-manager-waker
+
+Manual Installation (Non-Debian Distros)
+----------------------------------------
+
+If you are not on Debian, follow the manual steps below.
 
 Manual Installation
 -------------------
@@ -72,30 +67,26 @@ If you prefer to install manually or need to customize the installation:
 2. **Create application directory**:
    .. code-block:: bash
 
-      sudo mkdir -p /usr/local/sleep-manager
+      sudo mkdir -p /usr/lib/sleep-manager
       sudo useradd --system --user-group --shell /bin/false sleep-manager
 
 3. **Copy application files**:
    .. code-block:: bash
 
-      sudo cp -r . /usr/local/sleep-manager/
-      sudo chown -R sleep-manager:sleep-manager /usr/local/sleep-manager
+      sudo cp -r . /usr/lib/sleep-manager/
+      sudo chown -R sleep-manager:sleep-manager /usr/lib/sleep-manager
 
 4. **Create virtual environment**:
    .. code-block:: bash
 
-      cd /usr/local/sleep-manager
+      cd /usr/lib/sleep-manager
       sudo -u sleep-manager python3 -m venv venv
       sudo -u sleep-manager venv/bin/pip install -e .
 
 5. **Install system dependencies**:
    .. code-block:: bash
 
-      # For sleeper
-      sudo apt install ethtool
-
-      # For waker
-      sudo apt install etherwake
+      sudo apt install etherwake ethtool
 
 6. **Install systemd services**:
    .. code-block:: bash
@@ -112,8 +103,8 @@ Create the configuration file:
 
 .. code-block:: bash
 
-   sudo mkdir -p /usr/local/sleep-manager/config
-   sudo nano /usr/local/sleep-manager/config/sleep-manager-config.json
+   sudo mkdir -p /etc/sleep-manager
+   sudo nano /etc/sleep-manager/sleep-manager-config.json
 
 Example configuration:
 
@@ -156,7 +147,7 @@ Common installation issues:
 1. **Permission denied errors**:
    .. code-block:: bash
 
-      sudo chown -R sleep-manager:sleep-manager /usr/local/sleep-manager
+      sudo chown -R sleep-manager:sleep-manager /usr/lib/sleep-manager
 
 2. **Service won't start**:
    .. code-block:: bash
@@ -166,7 +157,7 @@ Common installation issues:
 3. **Python import errors**:
    .. code-block:: bash
 
-      sudo -u sleep-manager /usr/local/sleep-manager/venv/bin/pip install -e .
+      sudo -u sleep-manager /usr/lib/sleep-manager/venv/bin/pip install -e .
 
 For more troubleshooting help, see :doc:`troubleshooting`.
 

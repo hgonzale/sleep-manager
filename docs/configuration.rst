@@ -3,7 +3,7 @@ Configuration
 
 Sleep Manager loads configuration from JSON. The default path is:
 
-``/usr/local/sleep-manager/config/sleep-manager-config.json``
+``/etc/sleep-manager/sleep-manager-config.json``
 
 You can override this path with the ``SLEEP_MANAGER_CONFIG_PATH`` environment
 variable.

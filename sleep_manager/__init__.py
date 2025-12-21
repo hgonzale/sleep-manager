@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 CONFIG_ENV_VAR = "SLEEP_MANAGER_CONFIG_PATH"
-DEFAULT_CONFIG_PATH = Path("/usr/local/sleep-manager/config/sleep-manager-config.json")
+DEFAULT_CONFIG_PATH = Path("/etc/sleep-manager/sleep-manager-config.json")
 EXAMPLE_CONFIG_PATH = (
     Path(__file__).resolve().parents[1] / "config" / "sleep-manager-config.json.example"
 )
@@ -51,7 +51,7 @@ def create_app() -> Flask:
     Configuration:
         The app loads configuration from the path defined in
         `SLEEP_MANAGER_CONFIG_PATH`, defaults to
-        `/usr/local/sleep-manager/config/sleep-manager-config.json`, and falls
+        `/etc/sleep-manager/sleep-manager-config.json`, and falls
         back to `config/sleep-manager-config.json.example` inside the repository.
 
     Routes:

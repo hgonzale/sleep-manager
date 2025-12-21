@@ -8,26 +8,26 @@ Sleep Manager is a Flask app for managing sleep/wake cycles between two machines
 - Two Linux machines on the same local network
 - systemd on both machines
 - Wake-on-LAN capable NIC on the sleeper
-- `etherwake` installed on the waker
+- `etherwake` installed
+- `ethtool` installed
 - sudo access on both machines
 
-## Install
+## Install (Debian)
+
+### Debian Package
 
 ```bash
-git clone <repository-url>
-cd sleep-manager
-chmod +x scripts/setup-system.sh
-
-# Sleeper machine
-sudo ./scripts/setup-system.sh sleeper
-
-# Waker machine
-sudo ./scripts/setup-system.sh waker
+./scripts/build-deb.sh
+sudo dpkg -i dist/deb/sleep-manager_*.deb
 ```
+
+## Install (Other Linux Distros)
+
+Follow the manual installation steps in the docs: `docs/installation.rst`.
 
 ## Key Configuration
 
-Config file path (default): `/usr/local/sleep-manager/config/sleep-manager-config.json`
+Config file path (default): `/etc/sleep-manager/sleep-manager-config.json`
 
 Most important settings:
 

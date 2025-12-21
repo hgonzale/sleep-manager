@@ -1,0 +1,45 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	:
+
+override_dh_auto_test:
+	:
+
+override_dh_auto_install:
+	# Stage application files under /usr/lib/sleep-manager
+	mkdir -p debian/sleep-manager/usr/lib/sleep-manager
+	rsync -a \
+	  --exclude '.git' \
+	  --exclude '.venv' \
+	  --exclude 'venv' \
+	  --exclude '.tox' \
+	  --exclude '.mypy_cache' \
+	  --exclude '.pytest_cache' \
+	  --exclude '.ruff_cache' \
+	  --exclude '__pycache__' \
+	  --exclude '*.pyc' \
+	  --exclude 'debian' \
+	  --exclude 'dist' \
+	  ./ debian/sleep-manager/usr/lib/sleep-manager/
+
+	# Sudoers
+	mkdir -p debian/sleep-manager/etc/sudoers.d
+	install -m 0440 debian/sleep-manager.sudoers \
+	  debian/sleep-manager/etc/sudoers.d/sleep-manager
+
+	# Config
+	mkdir -p debian/sleep-manager/etc/sleep-manager
+	if [ -f config/sleep-manager-config.json.example ]; then \
+	  install -m 0644 config/sleep-manager-config.json.example \
+	    debian/sleep-manager/etc/sleep-manager/sleep-manager-config.json; \
+	  install -m 0644 config/sleep-manager-config.json.example \
+	    debian/sleep-manager/etc/sleep-manager/sleep-manager-config.json.example; \
+	fi
+
+override_dh_fixperms:
+	dh_fixperms
+	chmod 0440 debian/sleep-manager/etc/sudoers.d/sleep-manager

@@ -1,0 +1,44 @@
+#!/bin/sh
+set -e
+
+if ! id sleep-manager >/dev/null 2>&1; then
+    useradd --system --user-group --shell /bin/false --home-dir /usr/lib/sleep-manager sleep-manager
+fi
+
+mkdir -p /etc/sleep-manager
+chown -R sleep-manager:sleep-manager /usr/lib/sleep-manager
+chmod 755 /usr/lib/sleep-manager
+
+if [ -d /usr/local/sleep-manager ] || \
+   [ -f /etc/systemd/system/sleep-manager-sleeper.service ] || \
+   [ -f /etc/systemd/system/sleep-manager-waker.service ] || \
+   [ -f /etc/systemd/system/sleep-manager-delay.service ]; then
+    cat <<'EOF'
+WARNING: Previous Sleep Manager install detected (/usr/local or legacy systemd units).
+The Debian package installs to /usr/lib/sleep-manager and systemd units now
+point there. If you previously ran from /usr/local, you should migrate:
+
+  1) sudo systemctl stop sleep-manager-sleeper sleep-manager-waker || true
+  2) sudo rsync -a /usr/local/sleep-manager/ /usr/lib/sleep-manager/
+  3) sudo chown -R sleep-manager:sleep-manager /usr/lib/sleep-manager
+  4) sudo systemctl restart sleep-manager-sleeper sleep-manager-waker
+
+If you already rebuilt via the .deb, you can ignore this warning.
+EOF
+fi
+
+if [ -f /etc/sleep-manager/sleep-manager-config.json ]; then
+    chown root:sleep-manager /etc/sleep-manager/sleep-manager-config.json
+    chmod 0640 /etc/sleep-manager/sleep-manager-config.json
+fi
+
+if [ ! -d /usr/lib/sleep-manager/venv ]; then
+    python3 -m venv /usr/lib/sleep-manager/venv
+fi
+
+chown -R sleep-manager:sleep-manager /usr/lib/sleep-manager/venv
+
+/usr/lib/sleep-manager/venv/bin/pip install --upgrade pip
+/usr/lib/sleep-manager/venv/bin/pip install --upgrade -e /usr/lib/sleep-manager
+
+exit 0

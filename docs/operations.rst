@@ -54,5 +54,5 @@ Backups
 
 .. code-block:: bash
 
-   sudo cp /usr/local/sleep-manager/config/sleep-manager-config.json /backup/
+   sudo cp /etc/sleep-manager/sleep-manager-config.json /backup/
    sudo cp /etc/systemd/system/sleep-manager-*.service /backup/
