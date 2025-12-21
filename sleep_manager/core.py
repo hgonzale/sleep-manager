@@ -1,4 +1,5 @@
 import logging
+import re
 import subprocess
 from collections.abc import Callable
 from functools import wraps
@@ -49,6 +50,21 @@ class NetworkError(SleepManagerError):
     def __init__(self, message: str, details: dict | None = None):
         super().__init__(message, status_code=503, details=details)
 
+def _redact_value(value: Any) -> Any:
+    if isinstance(value, str):
+        return re.sub(r"(?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}", "xx:xx:xx:xx:xx:xx", value)
+    return value
+
+
+def _sanitize_error_details(details: dict[str, Any]) -> dict[str, Any]:
+    sanitized: dict[str, Any] = {}
+    for key, value in details.items():
+        if key in {"stderr"}:
+            sanitized[key] = "[redacted]"
+        else:
+            sanitized[key] = _redact_value(value)
+    return sanitized
+
 
 def handle_error(error: Exception) -> tuple[dict[str, Any], int]:
     """Global error handler for the application"""
@@ -60,12 +76,13 @@ def handle_error(error: Exception) -> tuple[dict[str, Any], int]:
             }
         }, 404
     if isinstance(error, SleepManagerError):
-        logger.error(f"{error.__class__.__name__}: {error.message}", extra=error.details)
+        sanitized_details = _sanitize_error_details(error.details)
+        logger.error(f"{error.__class__.__name__}: {error.message}", extra=sanitized_details)
         return {
             "error": {
                 "type": error.__class__.__name__,
                 "message": error.message,
-                "details": error.details,
+                "details": sanitized_details,
             }
         }, error.status_code
     # Handle unexpected errors
@@ -74,7 +91,7 @@ def handle_error(error: Exception) -> tuple[dict[str, Any], int]:
         "error": {
             "type": "UnexpectedError",
             "message": "An unexpected error occurred",
-            "details": {"error": str(error)},
+            "details": {"error": "Unexpected error"},
         }
     }, 500
 
@@ -135,5 +152,6 @@ def check_command_availability(command: str) -> dict[str, Any]:
             "path": command_path if is_executable else None,
             "error": None if is_executable else f"Command {command} is not executable",
         }
-    except Exception as e:
-        return {"available": False, "error": str(e)}
+    except Exception:
+        logger.exception("Command availability check failed for %s", command)
+        return {"available": False, "error": "Command availability check failed"}

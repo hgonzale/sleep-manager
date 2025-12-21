@@ -110,15 +110,16 @@ def suspend() -> dict[str, Any]:
             },
         }
     except KeyError as e:
-        raise ConfigurationError(f"Missing configuration: {str(e)}") from e
-    except Exception as e:
+        missing_key = e.args[0] if e.args else "unknown"
+        raise ConfigurationError(f"Missing configuration: {missing_key}") from e
+    except Exception:
         logger.exception("Failed to suspend system")
         raise SystemCommandError(
             "Failed to suspend system",
             command=f"{systemctl_exec} {suspend_verb}".strip(),
             return_code=-1,
-            stderr=str(e),
-        ) from e
+            stderr="command failed",
+        ) from None
 
 
 @sleeper_bp.get("/status")
@@ -217,17 +218,18 @@ def status() -> dict[str, Any]:
             },
         }
     except KeyError as e:
-        raise ConfigurationError(f"Missing configuration: {str(e)}") from e
+        missing_key = e.args[0] if e.args else "unknown"
+        raise ConfigurationError(f"Missing configuration: {missing_key}") from e
     except SystemCommandError:
         raise
-    except Exception as e:
+    except Exception:
         logger.exception("Failed to get system status")
         raise SystemCommandError(
             "Failed to get system status",
             command=f"{systemctl_exec} {status_verb}".strip(),
             return_code=-1,
-            stderr=str(e),
-        ) from e
+            stderr="command failed",
+        ) from None
 
 
 def sleeper_url() -> str:
@@ -249,4 +251,5 @@ def sleeper_url() -> str:
 
         return f"http://{sleeper_name}.{domain}:{port}/sleeper"
     except KeyError as e:
-        raise ConfigurationError(f"Missing configuration: {str(e)}") from e
+        missing_key = e.args[0] if e.args else "unknown"
+        raise ConfigurationError(f"Missing configuration: {missing_key}") from e

@@ -160,17 +160,18 @@ def wake() -> dict[str, Any]:
             },
         }
     except KeyError as e:
-        raise ConfigurationError(f"Missing configuration: {str(e)}") from e
+        missing_key = e.args[0] if e.args else "unknown"
+        raise ConfigurationError(f"Missing configuration: {missing_key}") from e
     except SystemCommandError:
         raise
-    except Exception as e:
+    except Exception:
         logger.exception("Failed to wake sleeper")
         raise SystemCommandError(
             "Failed to wake sleeper",
             command=f"{wol_exec} {sleeper_mac}",
             return_code=-1,
-            stderr=str(e),
-        ) from e
+            stderr="command failed",
+        ) from None
 
 
 @waker_bp.get("/suspend")
@@ -336,7 +337,8 @@ def waker_url() -> str:
 
         return f"http://{waker_name}.{domain}:{port}/waker"
     except KeyError as e:
-        raise ConfigurationError(f"Missing configuration: {str(e)}") from e
+        missing_key = e.args[0] if e.args else "unknown"
+        raise ConfigurationError(f"Missing configuration: {missing_key}") from e
 
 
 def sleeper_request(endpoint: str) -> dict[str, Any]:
@@ -444,19 +446,19 @@ def sleeper_request(endpoint: str) -> dict[str, Any]:
             "error": "Sleeper machine is not reachable",
             "details": "Connection refused - sleeper may be down or sleeping",
         }
-    except requests.exceptions.RequestException as e:
-        logger.warning(f"Network error communicating with sleeper for {endpoint}: {str(e)}")
+    except requests.exceptions.RequestException:
+        logger.warning("Network error communicating with sleeper for %s", endpoint)
         return {
             "op": endpoint,
             "sleeper_status": "down",
             "error": "Sleeper machine is not reachable",
-            "details": f"Network error: {str(e)}",
+            "details": "Network error",
         }
-    except Exception as e:
-        logger.exception(f"Unexpected error during sleeper request for {endpoint}")
+    except Exception:
+        logger.exception("Unexpected error during sleeper request for %s", endpoint)
         return {
             "op": endpoint,
             "sleeper_status": "error",
             "error": "Unexpected error occurred",
-            "details": str(e),
+            "details": "Unexpected error",
         }

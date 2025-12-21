@@ -65,7 +65,8 @@ def create_app() -> Flask:
 
     config_path = _resolve_config_path()
     app.config.from_file(config_path, load=json.load, text=True)
-    logger.info(f"Loaded config: {app.config.get('SLEEPER')}")
+    role = "sleeper" if "SLEEPER" in app.config else "waker" if "WAKER" in app.config else "unknown"
+    logger.info("Loaded config for role=%s", role)
 
     # Register error handlers
     app.register_error_handler(SleepManagerError, handle_error)
@@ -142,8 +143,9 @@ def create_app() -> Flask:
                 if "API_KEY" not in current_app.config:
                     config_errors.append("Missing API_KEY")
 
-            except Exception as e:
-                config_errors.append(f"Configuration error: {str(e)}")
+            except Exception:
+                logger.exception("Configuration error during health check")
+                config_errors.append("Configuration error")
 
             # Check command availability based on role
             commands: dict[str, dict[str, Any]] = {}
@@ -168,7 +170,7 @@ def create_app() -> Flask:
             }
             return cast(dict[str, Any], sanitize(result))
 
-        except Exception as e:
+        except Exception:
             logger.exception("Health check failed")
             return {"status": "unhealthy", "error": "Health check failed"}, 500
 

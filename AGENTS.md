@@ -15,6 +15,13 @@
 - **Network resilience:** Waker-to-sleeper calls wrap `requests.get` with timeouts and structured error responses to handle sleep/offline states cleanly.
 - **Central error handling:** Custom error classes with a shared Flask error handler return consistent JSON error payloads.
 
+## Logging safety (what must not be logged)
+
+- **Secrets:** Never log `API_KEY`, auth headers, or full request headers.
+- **Identifiers:** Avoid logging full MAC addresses; redact them if needed.
+- **Sensitive payloads:** Do not log full config files or exception messages that can reveal secrets or paths.
+- **Exception handling:** Avoid returning raw exception strings (`str(e)`) to clients or logging them in structured responses; log exceptions server-side and return generic errors.
+
 ## Configuration essentials
 
 - **Keys:** `SLEEPER`, `WAKER`, `API_KEY`, `DOMAIN`, `PORT`, `DEFAULT_REQUEST_TIMEOUT`.
