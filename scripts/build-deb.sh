@@ -4,9 +4,18 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
-version=$(awk -F'"' '/^version = /{print $2; exit}' "$PROJECT_DIR/pyproject.toml")
+if [[ -n "${GITHUB_REF:-}" && "$GITHUB_REF" == refs/tags/v* ]]; then
+    export SETUPTOOLS_SCM_PRETEND_VERSION="${GITHUB_REF#refs/tags/v}"
+fi
+
+version=$(cd "$PROJECT_DIR" && python3 - <<'PY'
+from setuptools_scm import get_version
+print(get_version(root=".", relative_to="."))
+PY
+)
+
 if [[ -z "$version" ]]; then
-    echo "Could not determine version from pyproject.toml" >&2
+    echo "Could not determine version from package metadata" >&2
     exit 1
 fi
 
