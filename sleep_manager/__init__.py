@@ -170,6 +170,6 @@ def create_app() -> Flask:
 
         except Exception as e:
             logger.exception("Health check failed")
-            return {"status": "unhealthy", "error": str(e)}, 500
+            return {"status": "unhealthy", "error": "Health check failed"}, 500
 
     return app
