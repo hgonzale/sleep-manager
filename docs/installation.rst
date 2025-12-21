@@ -25,24 +25,19 @@ System Requirements
 Debian Package Installation
 ---------------------------
 
-If you prefer a package-based install on Debian, build and install the .deb:
+Download the latest `.deb` from GitHub Releases and install it:
 
-1. **Build the package**:
+1. **Install the package**:
    .. code-block:: bash
 
-      ./scripts/build-deb.sh
+      sudo dpkg -i sleep-manager_*.deb
 
-2. **Install the package**:
-   .. code-block:: bash
-
-      sudo dpkg -i dist/deb/sleep-manager_*.deb
-
-3. **Configure the application**:
+2. **Configure the application**:
    .. code-block:: bash
 
       sudo nano /etc/sleep-manager/sleep-manager-config.json
 
-4. **Start services**:
+3. **Start services**:
    .. code-block:: bash
 
       sudo systemctl start sleep-manager-sleeper

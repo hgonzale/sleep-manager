@@ -17,9 +17,10 @@ Sleep Manager is a Flask app for managing sleep/wake cycles between two machines
 ### Debian Package
 
 ```bash
-./scripts/build-deb.sh
-sudo dpkg -i dist/deb/sleep-manager_*.deb
+sudo dpkg -i sleep-manager_*.deb
 ```
+
+Download the latest `.deb` from GitHub Releases.
 
 ## Install (Other Linux Distros)
 
