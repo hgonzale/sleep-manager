@@ -130,7 +130,7 @@ def wake() -> dict[str, Any]:
         sleeper_mac = current_app.config["SLEEPER"]["mac_address"]
         wol_exec = current_app.config["WAKER"]["wol_exec"]
 
-        logger.info(f"Attempting to wake {sleeper_name} using {wol_exec} {sleeper_mac}")
+        logger.info("Attempting to wake %s using %s (MAC redacted)", sleeper_name, wol_exec)
 
         # run wake command and get return_code
         _res: subprocess.CompletedProcess[str] = subprocess.run(
