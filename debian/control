@@ -2,7 +2,7 @@ Source: sleep-manager
 Section: admin
 Priority: optional
 Maintainer: Sleep Manager Maintainers <ops@example.com>
-Build-Depends: debhelper-compat (= 13), rsync
+Build-Depends: debhelper-compat (= 13), rsync, build-essential
 Standards-Version: 4.6.2
 Rules-Requires-Root: no
 Homepage: https://hgonzale.github.io/sleep-manager/

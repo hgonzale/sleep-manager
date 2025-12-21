@@ -134,6 +134,22 @@ Wake-on-LAN setup (sleeper)
 
 The setup script configures the NIC for WoL, but BIOS/UEFI support must be enabled manually.
 
+Packaging (Build the .deb)
+--------------------------
+
+If you need to build the Debian package locally:
+
+1. **Install build dependencies**:
+   .. code-block:: bash
+
+      sudo apt update
+      sudo apt install build-essential debhelper-compat rsync dpkg-dev
+
+2. **Build the package**:
+   .. code-block:: bash
+
+      ./scripts/build-deb.sh
+
 Troubleshooting
 --------------
 
