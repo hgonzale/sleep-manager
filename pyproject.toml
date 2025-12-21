@@ -7,7 +7,7 @@ name = "sleep-manager"
 version = "1.1.0"
 description = "A Flask application for managing sleep/wake cycles between machines"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = {text = "MIT"}
 authors = [
     {name = "Sleep Manager Team", email = "team@sleep-manager.example"}
@@ -19,7 +19,6 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: POSIX :: Linux",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Topic :: System :: Systems Administration",
@@ -34,8 +33,8 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0.0",
-    "mypy>=1.0.0",
     "ruff>=0.6.0",
+    "ty==0.0.5",
     "tox>=4.14.0",
     "tox-uv>=1.11.0",
     "pip>=24.2",
@@ -50,8 +49,8 @@ docs = [
 [dependency-groups]
 dev = [
     "pytest>=7.0.0",
-    "mypy>=1.0.0",
     "ruff>=0.6.0",
+    "ty==0.0.5",
     "tox>=4.14.0",
     "tox-uv>=1.11.0",
     "pip>=24.2",
@@ -92,7 +91,7 @@ markers = [
 
 [tool.ruff]
 line-length = 120
-target-version = "py310"
+target-version = "py311"
 extend-exclude = [
     ".eggs",
     ".git",
@@ -128,24 +127,5 @@ indent-style = "space"
 skip-magic-trailing-comma = false
 line-ending = "auto"
 
-[tool.mypy]
-python_version = "3.10"
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = true
-disallow_incomplete_defs = true
-check_untyped_defs = true
-disallow_untyped_decorators = true
-no_implicit_optional = true
-warn_redundant_casts = true
-warn_unused_ignores = true
-warn_no_return = true
-warn_unreachable = true
-strict_equality = true
-
-[[tool.mypy.overrides]]
-module = [
-    "flask.*",
-    "requests.*",
-]
-ignore_missing_imports = true
+[tool.ty.environment]
+python-version = "3.11"

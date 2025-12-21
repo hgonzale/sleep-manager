@@ -4,6 +4,8 @@ A Flask-based application for managing sleep/wake cycles between two machines on
 
 ## Quick Start
 
+Python 3.11+ is required.
+
 1. **Clone and setup**:
 
    ```bash
@@ -89,7 +91,7 @@ curl -H "X-API-Key: your-api-key" http://waker_url:51339/waker/status
 
 ## Development Environment
 
-The repository uses [uv](https://github.com/astral-sh/uv) for dependency management, [tox](https://tox.wiki/) for task automation, [Ruff](https://docs.astral.sh/ruff/) for formatting/linting, and [mypy](https://mypy-lang.org/) for static typing. After installing `uv`, run:
+The repository uses [uv](https://github.com/astral-sh/uv) for dependency management, [tox](https://tox.wiki/) for task automation, [Ruff](https://docs.astral.sh/ruff/) for formatting/linting, and [ty](https://docs.astral.sh/ty/) for static typing. After installing `uv`, run:
 
 ```bash
 uv sync --group dev
@@ -100,17 +102,21 @@ uv sync --group dev
 Common development tasks:
 
 ```bash
-# Run the default test matrix
+# Run the default task matrix
 uv run tox
 
 # Target specific environments
-uv run tox -e py311         # Unit tests on Python 3.11
+uv run tox -e test          # Full test suite
 uv run tox -e lint          # Ruff lint checks
-uv run tox -e typecheck     # mypy
+uv run tox -e typecheck     # ty
+uv run tox -e docs          # Sphinx docs build
 
 # Format and lint quickly
 uv run ruff format .
 uv run ruff check .
+
+# Type check directly
+uv run ty check sleep_manager tests
 ```
 
 ## HomeKit Integration
