@@ -57,6 +57,72 @@ command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
+# Function to configure sudoers for sleep-manager runtime commands
+configure_sudoers() {
+    local role="$1"
+    local sudoers_path="/etc/sudoers.d/sleep-manager"
+    local systemctl_path=""
+    local etherwake_path=""
+    local tmp_file=""
+    local -a existing_lines=()
+    local -a new_lines=()
+
+    if command_exists systemctl; then
+        systemctl_path=$(command -v systemctl)
+    fi
+
+    if command_exists etherwake; then
+        etherwake_path=$(command -v etherwake)
+    fi
+
+    if [[ -f "$sudoers_path" ]]; then
+        while IFS= read -r line; do
+            [[ -z "$line" ]] && continue
+            [[ "$line" =~ ^# ]] && continue
+            existing_lines+=("$line")
+        done < "$sudoers_path"
+    fi
+
+    if [[ "$role" == "sleeper" || "$role" == "both" ]]; then
+        if [[ -n "$systemctl_path" ]]; then
+            new_lines+=("sleep-manager ALL=(root) NOPASSWD: ${systemctl_path} suspend, ${systemctl_path} is-system-running")
+        else
+            print_warning "systemctl not found; skipping sudoers entry for sleeper commands."
+        fi
+    fi
+
+    if [[ "$role" == "waker" || "$role" == "both" ]]; then
+        if [[ -n "$etherwake_path" ]]; then
+            new_lines+=("sleep-manager ALL=(root) NOPASSWD: ${etherwake_path}")
+        else
+            print_warning "etherwake not found; skipping sudoers entry for waker commands."
+        fi
+    fi
+
+    if [[ ${#existing_lines[@]} -eq 0 && ${#new_lines[@]} -eq 0 ]]; then
+        print_warning "No sudoers entries to write; skipping sudoers configuration."
+        return 0
+    fi
+
+    print_status "Configuring sudoers for sleep-manager..."
+    tmp_file=$(mktemp)
+    {
+        echo "# Managed by sleep-manager setup-system.sh"
+        printf "%s\n" "${existing_lines[@]}" "${new_lines[@]}" | awk 'NF && !seen[$0]++'
+    } > "$tmp_file"
+    chown root:root "$tmp_file"
+    chmod 0440 "$tmp_file"
+    mv "$tmp_file" "$sudoers_path"
+    chown root:root "$sudoers_path"
+    chmod 0440 "$sudoers_path"
+
+    if command_exists visudo; then
+        if ! visudo -c -f "$sudoers_path" >/dev/null 2>&1; then
+            print_warning "visudo check failed for $sudoers_path; please review manually."
+        fi
+    fi
+}
+
 # Function to check if running as root
 check_root() {
     if [[ $EUID -ne 0 ]]; then
@@ -256,6 +322,8 @@ setup_sleeper() {
     systemctl enable sleep-manager-sleeper.service
     print_status "Flask application service installed and enabled"
     
+    configure_sudoers "sleeper"
+
     # Configure Wake-on-LAN
     print_status "Configuring Wake-on-LAN using NetworkManager (nmcli)..."
     if command_exists nmcli; then
@@ -359,6 +427,8 @@ setup_waker() {
     else
         print_warning "etherwake not found. Please install it manually."
     fi
+
+    configure_sudoers "waker"
     
     print_status "Waker setup complete!"
     print_warning "Don't forget to:"
@@ -581,6 +651,27 @@ show_status() {
         print_status "✓ sleep-manager user: EXISTS"
     else
         print_warning "✗ sleep-manager user: NOT EXISTS"
+    fi
+
+    # Check sudoers configuration
+    if [[ -f /etc/sudoers.d/sleep-manager ]]; then
+        sudoers_perms=$(stat -c "%a" /etc/sudoers.d/sleep-manager 2>/dev/null || echo "")
+        sudoers_owner=$(stat -c "%U:%G" /etc/sudoers.d/sleep-manager 2>/dev/null || echo "")
+        if [[ "$sudoers_perms" == "440" && "$sudoers_owner" == "root:root" ]]; then
+            print_status "✓ sudoers file: /etc/sudoers.d/sleep-manager (0440 root:root)"
+        else
+            print_warning "✗ sudoers file permissions/owner invalid: /etc/sudoers.d/sleep-manager (${sudoers_perms:-unknown} ${sudoers_owner:-unknown})"
+        fi
+
+        if command_exists visudo; then
+            if visudo -c -f /etc/sudoers.d/sleep-manager >/dev/null 2>&1; then
+                print_status "✓ sudoers file syntax: OK"
+            else
+                print_warning "✗ sudoers file syntax: INVALID"
+            fi
+        fi
+    else
+        print_warning "✗ sudoers file: /etc/sudoers.d/sleep-manager NOT FOUND"
     fi
     
     # Check nmcli Wake-on-LAN configurations
