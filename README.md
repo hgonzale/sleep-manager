@@ -42,11 +42,12 @@ See the example config in `config/sleep-manager-config.json.example`.
 
 ## Documentation
 
-Full installation, configuration, operations, troubleshooting, and API docs are published via GitHub Pages.
+Full installation, configuration, operations, troubleshooting, and API docs are available at [https://hgonzale.github.io/sleep-manager/](https://hgonzale.github.io/sleep-manager/).
 
 ## HomeKit Integration
 
-See `homebridge-sleep-manager/` for HomeKit integration using the `homebridge-http-switch` plugin.
+See `homebridge-sleep-manager/` for HomeKit integration using the
+[`homebridge-http-switch` plugin](https://github.com/homebridge-plugins/homebridge-http-switch).
 
 ## License
 
