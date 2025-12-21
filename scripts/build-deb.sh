@@ -26,7 +26,7 @@ EOF_CHANGELOG
     dpkg-buildpackage -b -us -uc
 )
 
-built_deb=$(ls -t "$PROJECT_DIR/"../sleep-manager_${version}_all.deb 2>/dev/null | head -n1 || true)
+built_deb=$(find "$PROJECT_DIR/.." -maxdepth 1 -type f -name "sleep-manager_${version}_all.deb" -print 2>/dev/null | head -n1 || true)
 if [[ -z "$built_deb" ]]; then
     echo "Could not find built .deb in parent directory" >&2
     exit 1

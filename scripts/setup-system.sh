@@ -135,6 +135,7 @@ check_root() {
 # Function to detect system type
 detect_system() {
     if [[ -f /etc/os-release ]]; then
+        # shellcheck disable=SC1091
         . /etc/os-release
         OS=$NAME
         VER=$VERSION_ID
@@ -767,7 +768,8 @@ check_wol_status() {
 
     # Fallback: Check sysfs directly
     if [[ -f "/sys/class/net/$interface/device/power/wakeup" ]]; then
-        local wakeup_value=$(cat "/sys/class/net/$interface/device/power/wakeup" 2>/dev/null || echo "unknown")
+        local wakeup_value
+        wakeup_value=$(cat "/sys/class/net/$interface/device/power/wakeup" 2>/dev/null || echo "unknown")
         if [[ "$wakeup_value" == "enabled" ]]; then
             echo "Wake-on: enabled (sysfs)"
             return 0
