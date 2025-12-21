@@ -6,11 +6,19 @@ Service management
 
 .. code-block:: bash
 
-   sudo systemctl start sleep-manager-sleeper sleep-manager-waker
-   sudo systemctl enable sleep-manager-sleeper sleep-manager-waker
-   sudo systemctl stop sleep-manager-sleeper sleep-manager-waker
-   sudo systemctl disable sleep-manager-sleeper sleep-manager-waker
-   sudo systemctl status sleep-manager-sleeper sleep-manager-waker
+   # Run only the service for this machine's role.
+   sudo systemctl start sleep-manager-sleeper
+   sudo systemctl enable sleep-manager-sleeper
+   sudo systemctl stop sleep-manager-sleeper
+   sudo systemctl disable sleep-manager-sleeper
+   sudo systemctl status sleep-manager-sleeper
+
+   # Waker role (on the waker machine)
+   sudo systemctl start sleep-manager-waker
+   sudo systemctl enable sleep-manager-waker
+   sudo systemctl stop sleep-manager-waker
+   sudo systemctl disable sleep-manager-waker
+   sudo systemctl status sleep-manager-waker
 
 Logs
 ----

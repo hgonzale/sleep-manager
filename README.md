@@ -1,6 +1,7 @@
 # Sleep Manager
 
 Sleep Manager is a Flask app for managing sleep/wake cycles between two machines on the same LAN. A **waker** sends Wake-on-LAN packets, and a **sleeper** suspends itself on demand.
+Each machine should run exactly one role (waker *or* sleeper). Do not enable both services on the same machine.
 
 ## Requirements
 

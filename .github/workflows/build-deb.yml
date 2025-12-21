@@ -19,7 +19,7 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y debhelper-compat rsync dpkg-dev build-essential
+          sudo apt-get install -y debhelper-compat rsync dpkg-dev build-essential python3-setuptools-scm
 
       - name: Build package
         run: ./scripts/build-deb.sh

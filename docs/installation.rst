@@ -37,11 +37,12 @@ Download the latest `.deb` from GitHub Releases and install it:
 
       sudo nano /etc/sleep-manager/sleep-manager-config.json
 
-3. **Start services**:
+3. **Start the service for the role on this machine**:
    .. code-block:: bash
 
       sudo systemctl start sleep-manager-sleeper
       sudo systemctl start sleep-manager-waker
+      # Only enable the one that matches this machine's role.
 
 Manual Installation (Non-Debian Distros)
 ----------------------------------------
@@ -90,6 +91,7 @@ If you prefer to install manually or need to customize the installation:
       sudo systemctl daemon-reload
       sudo systemctl enable sleep-manager-sleeper
       sudo systemctl enable sleep-manager-waker
+      # Enable only the service for this machine's role.
 
 Configuration
 -------------
@@ -143,7 +145,7 @@ If you need to build the Debian package locally:
    .. code-block:: bash
 
       sudo apt update
-      sudo apt install build-essential debhelper-compat rsync dpkg-dev
+      sudo apt install build-essential debhelper-compat rsync dpkg-dev python3-setuptools-scm
 
 2. **Build the package**:
    .. code-block:: bash
