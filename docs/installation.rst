@@ -9,7 +9,7 @@ Prerequisites
 Before installation, ensure you have:
 
 * **Debian 12 (Bookworm)** or compatible Linux distribution
-* **Python 3.10** or higher
+* **Python 3.11** or higher
 * **Root/sudo access** on both machines
 * **Network connectivity** between machines
 * **Wake-on-LAN capable** network interface (for sleeper)
@@ -17,7 +17,9 @@ Before installation, ensure you have:
 System Requirements
 ------------------
 
-For detailed system requirements, see :doc:`../SYSTEM_REQUIREMENTS`.
+* systemd for service management
+* Wake-on-LAN capable network interface (sleeper)
+* etherwake package on the waker
 
 Quick Installation
 ------------------
@@ -53,6 +55,8 @@ Quick Installation
 
       sudo systemctl start sleep-manager-sleeper
       sudo systemctl start sleep-manager-waker
+      sudo systemctl enable sleep-manager-sleeper
+      sudo systemctl enable sleep-manager-waker
 
 Manual Installation
 -------------------
@@ -116,43 +120,33 @@ Example configuration:
 .. code-block:: json
 
    {
+       "DOMAIN": "localdomain",
+       "PORT": 51339,
+       "DEFAULT_REQUEST_TIMEOUT": 4,
        "WAKER": {
            "name": "waker_url",
-           "ip": "192.168.1.100",
-           "mac": "00:11:22:33:44:55"
+           "wol_exec": "/usr/sbin/etherwake"
        },
        "SLEEPER": {
            "name": "sleeper_url",
-           "ip": "192.168.1.101",
-           "mac": "AA:BB:CC:DD:EE:FF"
+           "mac_address": "AA:BB:CC:DD:EE:FF",
+           "systemctl_command": "/usr/bin/systemctl",
+           "suspend_verb": "suspend",
+           "status_verb": "is-system-running"
        },
        "API_KEY": "your-secure-api-key-here"
    }
 
 For detailed configuration options, see :doc:`configuration`.
 
-Verification
-------------
+Wake-on-LAN setup (sleeper)
+---------------------------
 
-After installation, verify the setup:
+1. Enter BIOS/UEFI during boot (often F2, F10, or Del).
+2. Enable Wake-on-LAN (may be labeled "Power on by PCI-E").
+3. Save and reboot.
 
-1. **Check service status**:
-   .. code-block:: bash
-
-      sudo systemctl status sleep-manager-sleeper
-      sudo systemctl status sleep-manager-waker
-
-2. **Test health endpoint**:
-   .. code-block:: bash
-
-      curl http://sleeper_url:51339/health
-      curl http://waker_url:51339/health
-
-3. **Test API endpoints**:
-   .. code-block:: bash
-
-      curl -H "X-API-Key: your-api-key" http://sleeper_url:51339/sleeper/status
-      curl -H "X-API-Key: your-api-key" http://waker_url:51339/waker/wake
+The setup script configures the NIC for WoL, but BIOS/UEFI support must be enabled manually.
 
 Troubleshooting
 --------------
@@ -186,4 +180,4 @@ After successful installation:
 3. Set up monitoring and logging
 4. Configure automated scripts
 
-For detailed usage instructions, see :doc:`quickstart`. 
+For operational commands, verification, and troubleshooting, see :doc:`operations` and :doc:`troubleshooting`.

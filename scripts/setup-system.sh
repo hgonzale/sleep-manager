@@ -700,7 +700,7 @@ main() {
             verify_setup
             echo
             print_status "Setup complete!"
-            print_warning "Please review SYSTEM_REQUIREMENTS.md for additional manual configuration steps."
+            print_warning "Please review docs/installation.rst for additional manual configuration steps."
             print_warning "Don't forget to configure Wake-on-LAN in your BIOS/UEFI settings!"
             ;;
         waker)
@@ -711,7 +711,7 @@ main() {
             verify_setup
             echo
             print_status "Setup complete!"
-            print_warning "Please review SYSTEM_REQUIREMENTS.md for additional manual configuration steps."
+            print_warning "Please review docs/installation.rst for additional manual configuration steps."
             ;;
         both)
             check_root
@@ -722,7 +722,7 @@ main() {
             verify_setup
             echo
             print_status "Setup complete!"
-            print_warning "Please review SYSTEM_REQUIREMENTS.md for additional manual configuration steps."
+            print_warning "Please review docs/installation.rst for additional manual configuration steps."
             print_warning "Don't forget to configure Wake-on-LAN in your BIOS/UEFI settings!"
             ;;
         uninstall-sleeper)
