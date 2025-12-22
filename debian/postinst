@@ -53,7 +53,7 @@ fi
 
 chown -R sleep-manager:sleep-manager /usr/lib/sleep-manager/venv
 
-/usr/lib/sleep-manager/venv/bin/pip install --upgrade pip
+/usr/lib/sleep-manager/venv/bin/pip install --upgrade pip setuptools wheel
 /usr/lib/sleep-manager/venv/bin/pip install --upgrade hatchling hatch-vcs
 /usr/lib/sleep-manager/venv/bin/pip install --upgrade --no-build-isolation /usr/lib/sleep-manager
 
