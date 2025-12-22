@@ -5,11 +5,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
 if [[ -n "${GITHUB_REF:-}" && "$GITHUB_REF" == refs/tags/v* ]]; then
-    export SETUPTOOLS_SCM_PRETEND_VERSION="${GITHUB_REF#refs/tags/v}"
+    export HATCH_VCS_VERSION="${GITHUB_REF#refs/tags/v}"
 fi
 
 version=$(cd "$PROJECT_DIR" && python3 - <<'PY'
-from setuptools_scm import get_version
+from hatch_vcs import get_version
 print(get_version(root=".", relative_to="."))
 PY
 )

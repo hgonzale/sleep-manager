@@ -145,7 +145,7 @@ If you need to build the Debian package locally:
    .. code-block:: bash
 
       sudo apt update
-      sudo apt install build-essential debhelper-compat rsync dpkg-dev python3-setuptools-scm
+      sudo apt install build-essential debhelper-compat rsync dpkg-dev python3-hatchling python3-hatch-vcs
 
 2. **Build the package**:
    .. code-block:: bash

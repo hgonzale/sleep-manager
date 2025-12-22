@@ -2,7 +2,7 @@ Source: sleep-manager
 Section: admin
 Priority: optional
 Maintainer: Sleep Manager Maintainers <ops@example.com>
-Build-Depends: debhelper-compat (= 13), rsync, build-essential, python3-setuptools-scm
+Build-Depends: debhelper-compat (= 13), rsync, build-essential, python3-hatchling, python3-hatch-vcs
 Standards-Version: 4.6.2
 Rules-Requires-Root: no
 Homepage: https://hgonzale.github.io/sleep-manager/
