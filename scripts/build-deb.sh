@@ -9,8 +9,15 @@ if [[ -n "${GITHUB_REF:-}" && "$GITHUB_REF" == refs/tags/v* ]]; then
 fi
 
 version=$(cd "$PROJECT_DIR" && python3 - <<'PY'
-from hatch_vcs import get_version
-print(get_version(root=".", relative_to="."))
+from setuptools_scm import get_version
+print(
+    get_version(
+        root=".",
+        fallback_version="0.0.0",
+        tag_regex=r"^v(?P<version>\d+\.\d+\.\d+)$",
+        git_describe_command="git describe --dirty --tags --long --match v[0-9]*",
+    )
+)
 PY
 )
 
