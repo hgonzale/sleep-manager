@@ -5,27 +5,35 @@ if ! id sleep-manager >/dev/null 2>&1; then
     useradd --system --user-group --shell /bin/false --home-dir /usr/lib/sleep-manager sleep-manager
 fi
 
+version_arg="$(dpkg-query -W -f='${Version}' sleep-manager 2>/dev/null || true)"
+if [ -z "$version_arg" ]; then
+    version_arg="${2:-}"
+fi
+version_arg="${version_arg#*:}"
+version_arg="${version_arg%%-*}"
+if [ -n "$version_arg" ]; then
+    export HATCH_VCS_VERSION="$version_arg"
+fi
+
 mkdir -p /etc/sleep-manager
 chown -R sleep-manager:sleep-manager /usr/lib/sleep-manager
 chmod 755 /usr/lib/sleep-manager
 
-if [ -d /usr/local/sleep-manager ] || \
-   [ -f /etc/systemd/system/sleep-manager-sleeper.service ] || \
-   [ -f /etc/systemd/system/sleep-manager-waker.service ] || \
-   [ -f /etc/systemd/system/sleep-manager-delay.service ]; then
-    cat <<'EOF'
-WARNING: Previous Sleep Manager install detected (/usr/local or legacy systemd units).
-The Debian package installs to /usr/lib/sleep-manager and systemd units now
-point there. If you previously ran from /usr/local, you should migrate:
-
-  1) sudo systemctl stop sleep-manager-sleeper sleep-manager-waker || true
-  2) sudo rsync -a /usr/local/sleep-manager/ /usr/lib/sleep-manager/
-  3) sudo chown -R sleep-manager:sleep-manager /usr/lib/sleep-manager
-  4) sudo systemctl restart sleep-manager-sleeper sleep-manager-waker
-
-If you already rebuilt via the .deb, you can ignore this warning.
-EOF
-fi
+needs_reenable=0
+for unit in sleep-manager-sleeper.service sleep-manager-waker.service sleep-manager-delay.service; do
+    if [ -f "/etc/systemd/system/$unit" ]; then
+        if grep -q "/usr/local/sleep-manager" "/etc/systemd/system/$unit"; then
+            mv "/etc/systemd/system/$unit" "/etc/systemd/system/${unit}.bak"
+            needs_reenable=1
+        fi
+    fi
+    if [ -d "/etc/systemd/system/${unit}.d" ]; then
+        if grep -R -q "/usr/local/sleep-manager" "/etc/systemd/system/${unit}.d" 2>/dev/null; then
+            mv "/etc/systemd/system/${unit}.d" "/etc/systemd/system/${unit}.d.bak"
+            needs_reenable=1
+        fi
+    fi
+done
 
 if [ -f /etc/sleep-manager/sleep-manager-config.json ]; then
     chown root:sleep-manager /etc/sleep-manager/sleep-manager-config.json
@@ -39,6 +47,16 @@ fi
 chown -R sleep-manager:sleep-manager /usr/lib/sleep-manager/venv
 
 /usr/lib/sleep-manager/venv/bin/pip install --upgrade pip
-/usr/lib/sleep-manager/venv/bin/pip install --upgrade -e /usr/lib/sleep-manager
+/usr/lib/sleep-manager/venv/bin/pip install --upgrade --no-deps --no-build-isolation /usr/lib/sleep-manager
+
+if [ "$needs_reenable" -eq 1 ]; then
+    systemctl daemon-reload >/dev/null 2>&1 || true
+    for unit in sleep-manager-sleeper.service sleep-manager-waker.service sleep-manager-delay.service; do
+        if systemctl is-enabled "$unit" >/dev/null 2>&1; then
+            systemctl reenable "$unit" >/dev/null 2>&1 || true
+        fi
+    done
+fi
+systemctl daemon-reload >/dev/null 2>&1 || true
 
 exit 0
