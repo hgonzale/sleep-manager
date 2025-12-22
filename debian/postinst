@@ -22,6 +22,12 @@ chmod 755 /usr/lib/sleep-manager
 
 needs_reenable=0
 for unit in sleep-manager-sleeper.service sleep-manager-waker.service sleep-manager-delay.service; do
+    if [ -d "/lib/systemd/system/$unit" ] && [ -f "/lib/systemd/system/$unit/$unit" ]; then
+        mv "/lib/systemd/system/$unit/$unit" "/lib/systemd/system/$unit.tmp"
+        rm -rf "/lib/systemd/system/$unit"
+        mv "/lib/systemd/system/$unit.tmp" "/lib/systemd/system/$unit"
+        needs_reenable=1
+    fi
     if [ -f "/etc/systemd/system/$unit" ]; then
         if grep -q "/usr/local/sleep-manager" "/etc/systemd/system/$unit"; then
             mv "/etc/systemd/system/$unit" "/etc/systemd/system/${unit}.bak"

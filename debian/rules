@@ -14,12 +14,19 @@ override_dh_auto_install:
 	mkdir -p debian/sleep-manager/usr/lib/sleep-manager
 	rsync -a \
 	  --exclude '.git' \
+	  --exclude '.github' \
 	  --exclude '.venv' \
-	  --exclude 'venv' \
-	  --exclude '.tox' \
-	  --exclude '.mypy_cache' \
-	  --exclude '.pytest_cache' \
-	  --exclude '.ruff_cache' \
+	  --exclude '.vscode' \
+	  --exclude 'AGENTS.md' \
+	  --exclude 'build' \
+	  --exclude 'config' \
+	  --exclude 'docs' \
+	  --exclude 'homebridge-sleep-manager' \
+	  --exclude 'scripts' \
+	  --exclude 'systemd' \
+	  --exclude 'tests' \
+	  --exclude 'tox.ini' \
+	  --exclude 'uv.lock' \
 	  --exclude '__pycache__' \
 	  --exclude '*.pyc' \
 	  --exclude 'debian' \
