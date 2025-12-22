@@ -55,7 +55,7 @@ chown -R sleep-manager:sleep-manager /usr/lib/sleep-manager/venv
 
 /usr/lib/sleep-manager/venv/bin/pip install --upgrade pip
 /usr/lib/sleep-manager/venv/bin/pip install --upgrade hatchling hatch-vcs
-/usr/lib/sleep-manager/venv/bin/pip install --upgrade --no-deps --no-build-isolation /usr/lib/sleep-manager
+/usr/lib/sleep-manager/venv/bin/pip install --upgrade --no-build-isolation /usr/lib/sleep-manager
 
 if [ "$needs_reenable" -eq 1 ]; then
     systemctl daemon-reload >/dev/null 2>&1 || true
