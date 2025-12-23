@@ -47,6 +47,11 @@ if [ -f /etc/sleep-manager/sleep-manager-config.json ]; then
     chmod 0640 /etc/sleep-manager/sleep-manager-config.json
 fi
 
+if [ -f /etc/sudoers.d/sleep-manager ]; then
+    chown root:root /etc/sudoers.d/sleep-manager
+    chmod 0440 /etc/sudoers.d/sleep-manager
+fi
+
 if [ ! -d /usr/lib/sleep-manager/venv ]; then
     python3 -m venv /usr/lib/sleep-manager/venv
 fi
