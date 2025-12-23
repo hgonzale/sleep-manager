@@ -22,7 +22,6 @@ override_dh_auto_install:
 	  --exclude 'config' \
 	  --exclude 'docs' \
 	  --exclude 'homebridge-sleep-manager' \
-	  --exclude 'scripts' \
 	  --exclude 'systemd' \
 	  --exclude 'tests' \
 	  --exclude 'tox.ini' \
@@ -44,6 +43,11 @@ override_dh_auto_install:
 	  install -m 0644 config/sleep-manager-config.toml.example \
 	    debian/sleep-manager/etc/sleep-manager/sleep-manager-config.toml; \
 	fi
+
+	# Config migration helper
+	mkdir -p debian/sleep-manager/usr/lib/sleep-manager/scripts
+	install -m 0755 scripts/migrate_config.py \
+	  debian/sleep-manager/usr/lib/sleep-manager/scripts/migrate_config.py
 
 override_dh_fixperms:
 	dh_fixperms
