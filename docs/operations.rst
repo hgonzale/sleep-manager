@@ -6,30 +6,19 @@ Service management
 
 .. code-block:: bash
 
-   # Run only the service for this machine's role.
-   sudo systemctl start sleep-manager-sleeper
-   sudo systemctl enable sleep-manager-sleeper
-   sudo systemctl stop sleep-manager-sleeper
-   sudo systemctl disable sleep-manager-sleeper
-   sudo systemctl status sleep-manager-sleeper
-
-   # Waker role (on the waker machine)
-   sudo systemctl start sleep-manager-waker
-   sudo systemctl enable sleep-manager-waker
-   sudo systemctl stop sleep-manager-waker
-   sudo systemctl disable sleep-manager-waker
-   sudo systemctl status sleep-manager-waker
+   sudo systemctl start sleep-manager
+   sudo systemctl enable sleep-manager
+   sudo systemctl stop sleep-manager
+   sudo systemctl disable sleep-manager
+   sudo systemctl status sleep-manager
 
 Logs
 ----
 
 .. code-block:: bash
 
-   sudo journalctl -u sleep-manager-sleeper -f
-   sudo journalctl -u sleep-manager-waker -f
-
-   sudo journalctl -u sleep-manager-sleeper --since "1 hour ago"
-   sudo journalctl -u sleep-manager-waker --since "1 hour ago"
+   sudo journalctl -u sleep-manager -f
+   sudo journalctl -u sleep-manager --since "1 hour ago"
 
 API checks
 ----------
@@ -62,5 +51,6 @@ Backups
 
 .. code-block:: bash
 
-   sudo cp /etc/sleep-manager/sleep-manager-config.json /backup/
-   sudo cp /etc/systemd/system/sleep-manager-*.service /backup/
+   sudo cp /etc/sleep-manager/sleep-manager-config.toml /backup/
+   sudo cp /etc/systemd/system/sleep-manager.service /backup/
+   sudo cp /etc/systemd/system/sleep-manager-delay.service /backup/

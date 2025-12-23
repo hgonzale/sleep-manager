@@ -150,7 +150,7 @@ check_hostname_resolution() {
     print_status "Checking hostname resolution..."
     
     # Check if configuration file exists
-    if [[ ! -f /etc/sleep-manager/sleep-manager-config.json ]]; then
+    if [[ ! -f /etc/sleep-manager/sleep-manager-config.toml ]]; then
         print_warning "Configuration file not found. Skipping hostname resolution check."
         print_warning "Please configure the application first, then run this check again."
         return 0
@@ -160,14 +160,22 @@ check_hostname_resolution() {
     local waker_hostname=""
     local sleeper_hostname=""
     
-    if command_exists jq; then
-        waker_hostname=$(jq -r '.WAKER.name' /etc/sleep-manager/sleep-manager-config.json 2>/dev/null || echo "")
-        sleeper_hostname=$(jq -r '.SLEEPER.name' /etc/sleep-manager/sleep-manager-config.json 2>/dev/null || echo "")
-    else
-        # Fallback to grep if jq is not available
-        waker_hostname=$(grep -o '"name": *"[^"]*"' /etc/sleep-manager/sleep-manager-config.json | head -1 | cut -d'"' -f4 2>/dev/null || echo "")
-        sleeper_hostname=$(grep -o '"name": *"[^"]*"' /etc/sleep-manager/sleep-manager-config.json | tail -1 | cut -d'"' -f4 2>/dev/null || echo "")
-    fi
+    waker_hostname=$(python3 - <<'PY' 2>/dev/null || echo ""
+import tomllib
+from pathlib import Path
+
+data = tomllib.loads(Path("/etc/sleep-manager/sleep-manager-config.toml").read_text())
+print(data.get("WAKER", {}).get("name", ""))
+PY
+    )
+    sleeper_hostname=$(python3 - <<'PY' 2>/dev/null || echo ""
+import tomllib
+from pathlib import Path
+
+data = tomllib.loads(Path("/etc/sleep-manager/sleep-manager-config.toml").read_text())
+print(data.get("SLEEPER", {}).get("name", ""))
+PY
+    )
     
     if [[ -z "$waker_hostname" || -z "$sleeper_hostname" ]]; then
         print_warning "Could not extract hostnames from configuration file."
@@ -273,29 +281,29 @@ setup_sleeper() {
     print_status "Setting up configuration directory..."
     mkdir -p /etc/sleep-manager
 
-    if [[ ! -f /etc/sleep-manager/sleep-manager-config.json ]]; then
-        if [[ -f /usr/lib/sleep-manager/config/sleep-manager-config.json ]]; then
-            cp /usr/lib/sleep-manager/config/sleep-manager-config.json /etc/sleep-manager/sleep-manager-config.json
-            chown root:sleep-manager /etc/sleep-manager/sleep-manager-config.json
-            chmod 0640 /etc/sleep-manager/sleep-manager-config.json
-            print_status "Migrated existing config to /etc/sleep-manager/sleep-manager-config.json"
-        elif [[ -f /usr/local/sleep-manager/config/sleep-manager-config.json ]]; then
-            cp /usr/local/sleep-manager/config/sleep-manager-config.json /etc/sleep-manager/sleep-manager-config.json
-            chown root:sleep-manager /etc/sleep-manager/sleep-manager-config.json
-            chmod 0640 /etc/sleep-manager/sleep-manager-config.json
-            print_status "Migrated existing config to /etc/sleep-manager/sleep-manager-config.json"
+    if [[ ! -f /etc/sleep-manager/sleep-manager-config.toml ]]; then
+        if [[ -f /usr/lib/sleep-manager/config/sleep-manager-config.toml ]]; then
+            cp /usr/lib/sleep-manager/config/sleep-manager-config.toml /etc/sleep-manager/sleep-manager-config.toml
+            chown root:sleep-manager /etc/sleep-manager/sleep-manager-config.toml
+            chmod 0640 /etc/sleep-manager/sleep-manager-config.toml
+            print_status "Migrated existing config to /etc/sleep-manager/sleep-manager-config.toml"
+        elif [[ -f /usr/local/sleep-manager/config/sleep-manager-config.toml ]]; then
+            cp /usr/local/sleep-manager/config/sleep-manager-config.toml /etc/sleep-manager/sleep-manager-config.toml
+            chown root:sleep-manager /etc/sleep-manager/sleep-manager-config.toml
+            chmod 0640 /etc/sleep-manager/sleep-manager-config.toml
+            print_status "Migrated existing config to /etc/sleep-manager/sleep-manager-config.toml"
         fi
     fi
     
     # Copy example configuration file if it exists
-    if [[ -f "$PROJECT_DIR/config/sleep-manager-config.json.example" ]]; then
-        cp "$PROJECT_DIR/config/sleep-manager-config.json.example" /etc/sleep-manager/sleep-manager-config.json.example
+    if [[ -f "$PROJECT_DIR/config/sleep-manager-config.toml.example" ]]; then
+        cp "$PROJECT_DIR/config/sleep-manager-config.toml.example" /etc/sleep-manager/sleep-manager-config.toml.example
         print_status "Copied example configuration file to /etc/sleep-manager/"
-        print_warning "Please edit /etc/sleep-manager/sleep-manager-config.json.example and rename it to sleep-manager-config.json"
-        chown root:sleep-manager /etc/sleep-manager/sleep-manager-config.json.example
-        chmod 0644 /etc/sleep-manager/sleep-manager-config.json.example
+        print_warning "Please edit /etc/sleep-manager/sleep-manager-config.toml.example and rename it to sleep-manager-config.toml"
+        chown root:sleep-manager /etc/sleep-manager/sleep-manager-config.toml.example
+        chmod 0644 /etc/sleep-manager/sleep-manager-config.toml.example
     else
-        print_warning "Example configuration file not found. Please create /etc/sleep-manager/sleep-manager-config.json manually."
+        print_warning "Example configuration file not found. Please create /etc/sleep-manager/sleep-manager-config.toml manually."
     fi
     
     chown -R sleep-manager:sleep-manager /usr/lib/sleep-manager
@@ -335,9 +343,9 @@ setup_sleeper() {
     
     # Install Flask application service
     print_status "Installing Flask application service..."
-    cp "$PROJECT_DIR/systemd/sleep-manager-sleeper.service" /etc/systemd/system/
+    cp "$PROJECT_DIR/systemd/sleep-manager.service" /etc/systemd/system/
     systemctl daemon-reload
-    systemctl enable sleep-manager-sleeper.service
+    systemctl enable sleep-manager.service
     print_status "Flask application service installed and enabled"
     
     configure_sudoers "sleeper"
@@ -362,7 +370,7 @@ setup_sleeper() {
     print_status "Sleeper setup complete!"
     print_warning "Don't forget to:"
     print_warning "1. Configure the application in /etc/sleep-manager/"
-    print_warning "2. Start the service with: systemctl start sleep-manager-sleeper"
+    print_warning "2. Start the service with: systemctl start sleep-manager"
 }
 
 # Function to setup waker machine
@@ -400,29 +408,29 @@ setup_waker() {
     print_status "Setting up configuration directory..."
     mkdir -p /etc/sleep-manager
 
-    if [[ ! -f /etc/sleep-manager/sleep-manager-config.json ]]; then
-        if [[ -f /usr/lib/sleep-manager/config/sleep-manager-config.json ]]; then
-            cp /usr/lib/sleep-manager/config/sleep-manager-config.json /etc/sleep-manager/sleep-manager-config.json
-            chown root:sleep-manager /etc/sleep-manager/sleep-manager-config.json
-            chmod 0640 /etc/sleep-manager/sleep-manager-config.json
-            print_status "Migrated existing config to /etc/sleep-manager/sleep-manager-config.json"
-        elif [[ -f /usr/local/sleep-manager/config/sleep-manager-config.json ]]; then
-            cp /usr/local/sleep-manager/config/sleep-manager-config.json /etc/sleep-manager/sleep-manager-config.json
-            chown root:sleep-manager /etc/sleep-manager/sleep-manager-config.json
-            chmod 0640 /etc/sleep-manager/sleep-manager-config.json
-            print_status "Migrated existing config to /etc/sleep-manager/sleep-manager-config.json"
+    if [[ ! -f /etc/sleep-manager/sleep-manager-config.toml ]]; then
+        if [[ -f /usr/lib/sleep-manager/config/sleep-manager-config.toml ]]; then
+            cp /usr/lib/sleep-manager/config/sleep-manager-config.toml /etc/sleep-manager/sleep-manager-config.toml
+            chown root:sleep-manager /etc/sleep-manager/sleep-manager-config.toml
+            chmod 0640 /etc/sleep-manager/sleep-manager-config.toml
+            print_status "Migrated existing config to /etc/sleep-manager/sleep-manager-config.toml"
+        elif [[ -f /usr/local/sleep-manager/config/sleep-manager-config.toml ]]; then
+            cp /usr/local/sleep-manager/config/sleep-manager-config.toml /etc/sleep-manager/sleep-manager-config.toml
+            chown root:sleep-manager /etc/sleep-manager/sleep-manager-config.toml
+            chmod 0640 /etc/sleep-manager/sleep-manager-config.toml
+            print_status "Migrated existing config to /etc/sleep-manager/sleep-manager-config.toml"
         fi
     fi
 
     # Copy example configuration file if it exists
-    if [[ -f "$PROJECT_DIR/config/sleep-manager-config.json.example" ]]; then
-        cp "$PROJECT_DIR/config/sleep-manager-config.json.example" /etc/sleep-manager/sleep-manager-config.json.example
+    if [[ -f "$PROJECT_DIR/config/sleep-manager-config.toml.example" ]]; then
+        cp "$PROJECT_DIR/config/sleep-manager-config.toml.example" /etc/sleep-manager/sleep-manager-config.toml.example
         print_status "Copied example configuration file to /etc/sleep-manager/"
-        print_warning "Please edit /etc/sleep-manager/sleep-manager-config.json.example and rename it to sleep-manager-config.json"
-        chown root:sleep-manager /etc/sleep-manager/sleep-manager-config.json.example
-        chmod 0644 /etc/sleep-manager/sleep-manager-config.json.example
+        print_warning "Please edit /etc/sleep-manager/sleep-manager-config.toml.example and rename it to sleep-manager-config.toml"
+        chown root:sleep-manager /etc/sleep-manager/sleep-manager-config.toml.example
+        chmod 0644 /etc/sleep-manager/sleep-manager-config.toml.example
     else
-        print_warning "Example configuration file not found. Please create /etc/sleep-manager/sleep-manager-config.json manually."
+        print_warning "Example configuration file not found. Please create /etc/sleep-manager/sleep-manager-config.toml manually."
     fi
     
     chown -R sleep-manager:sleep-manager /usr/lib/sleep-manager
@@ -449,9 +457,9 @@ setup_waker() {
     
     # Install Flask application service
     print_status "Installing Flask application service..."
-    cp "$PROJECT_DIR/systemd/sleep-manager-waker.service" /etc/systemd/system/
+    cp "$PROJECT_DIR/systemd/sleep-manager.service" /etc/systemd/system/
     systemctl daemon-reload
-    systemctl enable sleep-manager-waker.service
+    systemctl enable sleep-manager.service
     print_status "Flask application service installed and enabled"
     
     # Install etherwake
@@ -480,7 +488,7 @@ setup_waker() {
     print_status "Waker setup complete!"
     print_warning "Don't forget to:"
     print_warning "1. Configure the application in /etc/sleep-manager/"
-    print_warning "2. Start the service with: systemctl start sleep-manager-waker"
+    print_warning "2. Start the service with: systemctl start sleep-manager"
 }
 
 # Function to update dependencies
@@ -504,16 +512,16 @@ uninstall_sleeper() {
     print_status "Uninstalling SLEEPER components..."
     
     # Stop and disable Flask application service
-    if systemctl is-enabled sleep-manager-sleeper.service >/dev/null 2>&1; then
+    if systemctl is-enabled sleep-manager.service >/dev/null 2>&1; then
         print_status "Stopping and disabling Flask application service..."
-        systemctl stop sleep-manager-sleeper.service
-        systemctl disable sleep-manager-sleeper.service
+        systemctl stop sleep-manager.service
+        systemctl disable sleep-manager.service
     fi
     
     # Remove Flask application service file
-    if [[ -f /etc/systemd/system/sleep-manager-sleeper.service ]]; then
+    if [[ -f /etc/systemd/system/sleep-manager.service ]]; then
         print_status "Removing Flask application service file..."
-        rm /etc/systemd/system/sleep-manager-sleeper.service
+        rm /etc/systemd/system/sleep-manager.service
         systemctl daemon-reload
     fi
     
@@ -558,16 +566,16 @@ uninstall_waker() {
     print_status "Uninstalling WAKER components..."
     
     # Stop and disable Flask application service
-    if systemctl is-enabled sleep-manager-waker.service >/dev/null 2>&1; then
+    if systemctl is-enabled sleep-manager.service >/dev/null 2>&1; then
         print_status "Stopping and disabling Flask application service..."
-        systemctl stop sleep-manager-waker.service
-        systemctl disable sleep-manager-waker.service
+        systemctl stop sleep-manager.service
+        systemctl disable sleep-manager.service
     fi
     
     # Remove Flask application service file
-    if [[ -f /etc/systemd/system/sleep-manager-waker.service ]]; then
+    if [[ -f /etc/systemd/system/sleep-manager.service ]]; then
         print_status "Removing Flask application service file..."
-        rm /etc/systemd/system/sleep-manager-waker.service
+        rm /etc/systemd/system/sleep-manager.service
         systemctl daemon-reload
     fi
     
@@ -642,16 +650,16 @@ show_status() {
     print_status "============================"
     
     # Check Flask application services
-    if systemctl is-enabled sleep-manager-sleeper.service >/dev/null 2>&1; then
+    if systemctl is-enabled sleep-manager.service >/dev/null 2>&1; then
         print_status "✓ Sleep Manager Sleeper Service: ENABLED"
-        if systemctl is-active sleep-manager-sleeper.service >/dev/null 2>&1; then
+        if systemctl is-active sleep-manager.service >/dev/null 2>&1; then
             print_status "  Status: ACTIVE"
         else
             print_warning "  Status: INACTIVE"
         fi
-    elif systemctl is-enabled sleep-manager-waker.service >/dev/null 2>&1; then
+    elif systemctl is-enabled sleep-manager.service >/dev/null 2>&1; then
         print_status "✓ Sleep Manager Waker Service: ENABLED"
-        if systemctl is-active sleep-manager-waker.service >/dev/null 2>&1; then
+        if systemctl is-active sleep-manager.service >/dev/null 2>&1; then
             print_status "  Status: ACTIVE"
         else
             print_warning "  Status: INACTIVE"

@@ -6,18 +6,15 @@ Service won't start
 
 .. code-block:: bash
 
-   sudo systemctl status sleep-manager-sleeper
-   sudo journalctl -u sleep-manager-sleeper -n 50
-
-   sudo systemctl status sleep-manager-waker
-   sudo journalctl -u sleep-manager-waker -n 50
+   sudo systemctl status sleep-manager
+   sudo journalctl -u sleep-manager -n 50
 
 Check configuration
 -------------------
 
 .. code-block:: bash
 
-   sudo cat /etc/sleep-manager/sleep-manager-config.json
+   sudo cat /etc/sleep-manager/sleep-manager-config.toml
 
 Common network issues
 ---------------------

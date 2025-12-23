@@ -21,7 +21,7 @@ chown -R sleep-manager:sleep-manager /usr/lib/sleep-manager
 chmod 755 /usr/lib/sleep-manager
 
 needs_reenable=0
-for unit in sleep-manager-sleeper.service sleep-manager-waker.service sleep-manager-delay.service; do
+for unit in sleep-manager.service sleep-manager-sleeper.service sleep-manager-waker.service sleep-manager-delay.service; do
     if [ -d "/lib/systemd/system/$unit" ] && [ -f "/lib/systemd/system/$unit/$unit" ]; then
         mv "/lib/systemd/system/$unit/$unit" "/lib/systemd/system/$unit.tmp"
         rm -rf "/lib/systemd/system/$unit"
@@ -42,9 +42,86 @@ for unit in sleep-manager-sleeper.service sleep-manager-waker.service sleep-mana
     fi
 done
 
-if [ -f /etc/sleep-manager/sleep-manager-config.json ]; then
-    chown root:sleep-manager /etc/sleep-manager/sleep-manager-config.json
-    chmod 0640 /etc/sleep-manager/sleep-manager-config.json
+for unit in sleep-manager-sleeper.service sleep-manager-waker.service; do
+    if systemctl is-enabled "$unit" >/dev/null 2>&1; then
+        systemctl stop "$unit" >/dev/null 2>&1 || true
+        systemctl disable "$unit" >/dev/null 2>&1 || true
+    fi
+    if [ -f "/etc/systemd/system/$unit" ]; then
+        rm -f "/etc/systemd/system/$unit"
+        needs_reenable=1
+    fi
+done
+
+if [ -f /etc/sleep-manager/sleep-manager-config.toml ]; then
+    chown root:sleep-manager /etc/sleep-manager/sleep-manager-config.toml
+    chmod 0640 /etc/sleep-manager/sleep-manager-config.toml
+fi
+if [ -f /etc/sleep-manager/sleep-manager-config.json ] && \
+   [ ! -f /etc/sleep-manager/sleep-manager-config.toml ]; then
+    python3 - <<'PY' || true
+import json
+from pathlib import Path
+
+src = Path("/etc/sleep-manager/sleep-manager-config.json")
+dest = Path("/etc/sleep-manager/sleep-manager-config.toml")
+data = json.loads(src.read_text())
+
+lines = []
+common = {}
+if isinstance(data.get("COMMON"), dict):
+    common = data["COMMON"]
+else:
+    for key in ("DOMAIN", "PORT", "DEFAULT_REQUEST_TIMEOUT", "API_KEY"):
+        if key in data:
+            common[key] = data[key]
+
+role = None
+if isinstance(common.get("ROLE"), str):
+    role = common["ROLE"]
+elif isinstance(data.get("ROLE"), str):
+    role = data["ROLE"]
+elif "WAKER" in data and "SLEEPER" not in data:
+    role = "waker"
+elif "SLEEPER" in data and "WAKER" not in data:
+    role = "sleeper"
+
+if role is None:
+    print(
+        "WARNING: Unable to infer COMMON.ROLE from legacy JSON config; "
+        "please set COMMON.ROLE to 'waker' or 'sleeper'."
+    )
+else:
+    common["ROLE"] = role
+
+lines.append("[COMMON]")
+for key, value in common.items():
+    if isinstance(value, str):
+        lines.append(f'{key} = "{value}"')
+    elif isinstance(value, bool):
+        lines.append(f"{key} = {'true' if value else 'false'}")
+    else:
+        lines.append(f"{key} = {value}")
+lines.append("")
+
+for section in ("WAKER", "SLEEPER"):
+    section_data = data.get(section)
+    if not isinstance(section_data, dict):
+        continue
+    lines.append(f"[{section}]")
+    for skey, svalue in section_data.items():
+        if isinstance(svalue, str):
+            lines.append(f'{skey} = "{svalue}"')
+        elif isinstance(svalue, bool):
+            lines.append(f"{skey} = {'true' if svalue else 'false'}")
+        else:
+            lines.append(f"{skey} = {svalue}")
+    lines.append("")
+
+dest.write_text("\n".join(lines).strip() + "\n")
+PY
+    chown root:sleep-manager /etc/sleep-manager/sleep-manager-config.toml
+    chmod 0640 /etc/sleep-manager/sleep-manager-config.toml
 fi
 
 if [ -f /etc/sudoers.d/sleep-manager ]; then
@@ -64,7 +141,7 @@ chown -R sleep-manager:sleep-manager /usr/lib/sleep-manager/venv
 
 if [ "$needs_reenable" -eq 1 ]; then
     systemctl daemon-reload >/dev/null 2>&1 || true
-    for unit in sleep-manager-sleeper.service sleep-manager-waker.service sleep-manager-delay.service; do
+    for unit in sleep-manager.service sleep-manager-delay.service; do
         if systemctl is-enabled "$unit" >/dev/null 2>&1; then
             systemctl reenable "$unit" >/dev/null 2>&1 || true
         fi

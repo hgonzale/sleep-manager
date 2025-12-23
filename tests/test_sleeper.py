@@ -11,18 +11,11 @@ pytestmark = pytest.mark.unit
 
 
 @pytest.fixture
-def app() -> Flask:
+def app(make_config) -> Flask:
     """Create a test Flask application."""
+    make_config("sleeper")
     app = create_app()
     app.config["TESTING"] = True
-    app.config["API_KEY"] = "test-api-key"
-    app.config["SLEEPER"] = {
-        "name": "test-sleeper",
-        "mac_address": "00:11:22:33:44:55",
-        "systemctl_command": "/usr/bin/systemctl",
-        "suspend_verb": "suspend",
-        "status_verb": "is-system-running",
-    }
     return app
 
 

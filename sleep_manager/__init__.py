@@ -1,11 +1,12 @@
 import logging
 import os
+import tomllib
 from pathlib import Path
 from typing import Any, cast
 
-from flask import Flask, current_app, json
+from flask import Flask, current_app
 
-from .core import SleepManagerError, check_command_availability, handle_error
+from .core import ConfigurationError, SleepManagerError, check_command_availability, handle_error
 from .sleeper import sleeper_bp
 from .waker import waker_bp
 
@@ -15,9 +16,9 @@ logger = logging.getLogger(__name__)
 
 
 CONFIG_ENV_VAR = "SLEEP_MANAGER_CONFIG_PATH"
-DEFAULT_CONFIG_PATH = Path("/etc/sleep-manager/sleep-manager-config.json")
+DEFAULT_CONFIG_PATH = Path("/etc/sleep-manager/sleep-manager-config.toml")
 EXAMPLE_CONFIG_PATH = (
-    Path(__file__).resolve().parents[1] / "config" / "sleep-manager-config.json.example"
+    Path(__file__).resolve().parents[1] / "config" / "sleep-manager-config.toml.example"
 )
 
 
@@ -51,8 +52,9 @@ def create_app() -> Flask:
     Configuration:
         The app loads configuration from the path defined in
         `SLEEP_MANAGER_CONFIG_PATH`, defaults to
-        `/etc/sleep-manager/sleep-manager-config.json`, and falls
-        back to `config/sleep-manager-config.json.example` inside the repository.
+        `/etc/sleep-manager/sleep-manager-config.toml`, and falls
+        back to `config/sleep-manager-config.toml.example` inside the repository.
+        Shared settings live under the `COMMON` section.
 
     Routes:
         - GET /: Welcome message
@@ -64,17 +66,31 @@ def create_app() -> Flask:
     app = Flask(__name__, instance_relative_config=False)
 
     config_path = _resolve_config_path()
-    app.config.from_file(config_path, load=json.load, text=True)
-    role = "sleeper" if "SLEEPER" in app.config else "waker" if "WAKER" in app.config else "unknown"
+    with config_path.open("rb") as config_file:
+        config_data = tomllib.load(config_file)
+    app.config.from_mapping(config_data)
+    common_config = config_data.get("COMMON")
+    if isinstance(common_config, dict):
+        app.config.from_mapping(common_config)
+    elif common_config is not None:
+        logger.warning("COMMON config section is not a table; ignoring it.")
+
+    role = app.config.get("ROLE")
+    if role is None:
+        raise ConfigurationError("Missing required COMMON.ROLE (must be 'waker' or 'sleeper')")
+    if role not in ("waker", "sleeper"):
+        raise ConfigurationError("COMMON.ROLE must be 'waker' or 'sleeper'")
     logger.info("Loaded config for role=%s", role)
 
     # Register error handlers
     app.register_error_handler(SleepManagerError, handle_error)
     app.register_error_handler(Exception, handle_error)
 
-    # Register blueprints with authentication
-    app.register_blueprint(waker_bp)
-    app.register_blueprint(sleeper_bp)
+    # Register role-specific blueprints with authentication
+    if role == "waker":
+        app.register_blueprint(waker_bp)
+    else:
+        app.register_blueprint(sleeper_bp)
 
     @app.route("/")
     def welcome() -> str:
@@ -122,24 +138,33 @@ def create_app() -> Flask:
             role = None
 
             try:
-                # Check if we have sleeper config
-                if "SLEEPER" in current_app.config:
+                if "WAKER" in current_app.config:
+                    role = "waker"
+                elif "SLEEPER" in current_app.config:
                     role = "sleeper"
-                    required_keys = ["name", "mac_address", "suspend_verb"]
-                    for key in required_keys:
+
+                if role == "waker":
+                    required_waker = ["name", "wol_exec"]
+                    for key in required_waker:
+                        if key not in current_app.config["WAKER"]:
+                            config_errors.append(f"Missing WAKER.{key}")
+                    if "SLEEPER" not in current_app.config:
+                        config_errors.append("Missing SLEEPER")
+                    else:
+                        required_sleeper = ["name", "mac_address"]
+                        for key in required_sleeper:
+                            if key not in current_app.config["SLEEPER"]:
+                                config_errors.append(f"Missing SLEEPER.{key}")
+                elif role == "sleeper":
+                    required_sleeper = [
+                        "systemctl_command",
+                        "suspend_verb",
+                        "status_verb",
+                    ]
+                    for key in required_sleeper:
                         if key not in current_app.config["SLEEPER"]:
                             config_errors.append(f"Missing SLEEPER.{key}")
 
-                # Check if we have waker config
-                if "WAKER" in current_app.config:
-                    if role is None:
-                        role = "waker"
-                    required_keys = ["name", "wol_exec"]
-                    for key in required_keys:
-                        if key not in current_app.config["WAKER"]:
-                            config_errors.append(f"Missing WAKER.{key}")
-
-                # Check API key
                 if "API_KEY" not in current_app.config:
                     config_errors.append("Missing API_KEY")
 

@@ -1,7 +1,7 @@
 # Sleep Manager
 
 Sleep Manager is a Flask app for managing sleep/wake cycles between two machines on the same LAN. A **waker** sends Wake-on-LAN packets, and a **sleeper** suspends itself on demand.
-Each machine should run exactly one role (waker *or* sleeper). Do not enable both services on the same machine.
+Both machines can use the same config content; the only difference should be `COMMON.ROLE` (`waker` or `sleeper`). Only the APIs for that role are exposed. Shared settings live under `[COMMON]`; waker machines need `[WAKER]` plus the sleeper name/MAC in `[SLEEPER]`, and sleeper machines need `[SLEEPER]`.
 
 ## Requirements
 
@@ -29,18 +29,19 @@ Follow the manual installation steps in the docs: `docs/installation.rst`.
 
 ## Key Configuration
 
-Config file path (default): `/etc/sleep-manager/sleep-manager-config.json`
+Config file path (default): `/etc/sleep-manager/sleep-manager-config.toml`
 
 Most important settings:
 
-- `API_KEY`: shared secret for all authenticated endpoints
-- `SLEEPER.name`: hostname used for sleeper API URLs
-- `SLEEPER.mac_address`: MAC address used for Wake-on-LAN
+- `COMMON.ROLE`: required, either `waker` or `sleeper`
+- `COMMON.API_KEY`: shared secret for all authenticated endpoints
+- `COMMON.DOMAIN` and `COMMON.PORT`: used to construct URLs for inter-machine calls
+- `SLEEPER.name`: hostname used for sleeper API URLs (also required on the waker)
+- `SLEEPER.mac_address`: MAC address used for Wake-on-LAN (required on the waker)
 - `WAKER.name`: hostname used for waker API URLs
 - `WAKER.wol_exec`: path to `etherwake`
-- `DOMAIN` and `PORT`: used to construct URLs for inter-machine calls
 
-See the example config in `config/sleep-manager-config.json.example`.
+See the example config in `config/sleep-manager-config.toml.example` (it includes comments about which sections each machine needs).
 
 ## Documentation
 

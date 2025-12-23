@@ -11,14 +11,11 @@ pytestmark = pytest.mark.unit
 
 
 @pytest.fixture
-def app() -> Flask:
+def app(make_config) -> Flask:
     """Create a test Flask application."""
+    make_config("waker")
     app = create_app()
     app.config["TESTING"] = True
-    app.config["API_KEY"] = "test-api-key"
-    app.config["DEFAULT_REQUEST_TIMEOUT"] = 3
-    app.config["SLEEPER"] = {"name": "test-sleeper", "mac_address": "00:11:22:33:44:55"}
-    app.config["WAKER"] = {"name": "test-waker", "wol_exec": "/usr/sbin/etherwake"}
     return app
 
 

@@ -35,14 +35,17 @@ Download the latest `.deb` from GitHub Releases and install it:
 2. **Configure the application**:
    .. code-block:: bash
 
-      sudo nano /etc/sleep-manager/sleep-manager-config.json
+      sudo nano /etc/sleep-manager/sleep-manager-config.toml
 
-3. **Start the service for the role on this machine**:
+3. **Start the service**:
    .. code-block:: bash
 
-      sudo systemctl start sleep-manager-sleeper
-      sudo systemctl start sleep-manager-waker
-      # Only enable the one that matches this machine's role.
+      sudo systemctl start sleep-manager
+      sudo systemctl enable sleep-manager
+      # Both machines can use the same config content; only COMMON.ROLE should differ.
+      # Configure [COMMON] plus the role-specific section(s).
+      # COMMON.ROLE is required and must be "waker" or "sleeper".
+      # Only the APIs for the configured role will be exposed.
 
 Manual Installation (Non-Debian Distros)
 ----------------------------------------
@@ -87,11 +90,11 @@ If you prefer to install manually or need to customize the installation:
 6. **Install systemd services**:
    .. code-block:: bash
 
-      sudo cp systemd/sleep-manager-*.service /etc/systemd/system/
+      sudo cp systemd/sleep-manager.service /etc/systemd/system/
+      sudo cp systemd/sleep-manager-delay.service /etc/systemd/system/
       sudo systemctl daemon-reload
-      sudo systemctl enable sleep-manager-sleeper
-      sudo systemctl enable sleep-manager-waker
-      # Enable only the service for this machine's role.
+      sudo systemctl enable sleep-manager
+      # Configure either [WAKER] or [SLEEPER] in the TOML file, not both.
 
 Configuration
 -------------
@@ -101,29 +104,33 @@ Create the configuration file:
 .. code-block:: bash
 
    sudo mkdir -p /etc/sleep-manager
-   sudo nano /etc/sleep-manager/sleep-manager-config.json
+   sudo nano /etc/sleep-manager/sleep-manager-config.toml
 
 Example configuration:
 
-.. code-block:: json
+.. code-block:: toml
 
-   {
-       "DOMAIN": "localdomain",
-       "PORT": 51339,
-       "DEFAULT_REQUEST_TIMEOUT": 4,
-       "WAKER": {
-           "name": "waker_url",
-           "wol_exec": "/usr/sbin/etherwake"
-       },
-       "SLEEPER": {
-           "name": "sleeper_url",
-           "mac_address": "AA:BB:CC:DD:EE:FF",
-           "systemctl_command": "/usr/bin/systemctl",
-           "suspend_verb": "suspend",
-           "status_verb": "is-system-running"
-       },
-       "API_KEY": "your-secure-api-key-here"
-   }
+   [COMMON]
+   ROLE = "waker"
+   DOMAIN = "localdomain"
+   PORT = 51339
+   DEFAULT_REQUEST_TIMEOUT = 4
+   API_KEY = "your-secure-api-key-here"
+
+   [WAKER]
+   # Only needed on the waker machine.
+   name = "waker_url"
+   wol_exec = "/usr/sbin/etherwake"
+
+   [SLEEPER]
+   # Required on both machines (waker needs these to wake the sleeper).
+   name = "sleeper_url"
+   mac_address = "AA:BB:CC:DD:EE:FF"
+
+   # Sleeper-only settings.
+   systemctl_command = "/usr/bin/systemctl"
+   suspend_verb = "suspend"
+   status_verb = "is-system-running"
 
 For detailed configuration options, see :doc:`configuration`.
 
@@ -165,7 +172,7 @@ Common installation issues:
 2. **Service won't start**:
    .. code-block:: bash
 
-      sudo journalctl -u sleep-manager-sleeper -n 50
+      sudo journalctl -u sleep-manager -n 50
 
 3. **Python import errors**:
    .. code-block:: bash

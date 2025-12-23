@@ -1,7 +1,7 @@
 [Unit]
-Description=Sleep Manager Waker Service
-After=network.target
-Wants=network.target
+Description=Sleep Manager Service
+After=network.target network-online.target multi-user.target
+Wants=network.target network-online.target
 
 [Service]
 Type=simple

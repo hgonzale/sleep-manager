@@ -1,3 +1,2 @@
-systemd/sleep-manager-sleeper.service lib/systemd/system/
-systemd/sleep-manager-waker.service lib/systemd/system/
+systemd/sleep-manager.service lib/systemd/system/
 systemd/sleep-manager-delay.service lib/systemd/system/
