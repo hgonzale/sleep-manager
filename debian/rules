@@ -37,8 +37,12 @@ override_dh_auto_install:
 	install -m 0440 debian/sleep-manager.sudoers \
 	  debian/sleep-manager/etc/sudoers.d/sleep-manager
 
-	# Config directory (config file is created in postinst)
+	# Config
 	mkdir -p debian/sleep-manager/etc/sleep-manager
+	if [ -f config/sleep-manager-config.toml.example ]; then \
+	  install -m 0644 config/sleep-manager-config.toml.example \
+	    debian/sleep-manager/etc/sleep-manager/sleep-manager-config.toml; \
+	fi
 
 	# Config migration helper
 	mkdir -p debian/sleep-manager/usr/lib/sleep-manager/scripts

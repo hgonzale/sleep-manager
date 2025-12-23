@@ -57,8 +57,11 @@ for unit in sleep-manager-sleeper.service sleep-manager-waker.service; do
     fi
 done
 
-if [ ! -f /etc/sleep-manager/sleep-manager-config.toml ]; then
-    if [ -f /etc/sleep-manager/sleep-manager-config.json ]; then
+if [ -f /etc/sleep-manager/sleep-manager-config.json ]; then
+    example_config="/usr/lib/sleep-manager/config/sleep-manager-config.toml.example"
+    if [ -f /etc/sleep-manager/sleep-manager-config.toml ] && \
+       [ -f "$example_config" ] && \
+       cmp -s /etc/sleep-manager/sleep-manager-config.toml "$example_config"; then
         tmp_config="$(mktemp /tmp/sleep-manager-config.toml.XXXXXX)"
         if /usr/lib/sleep-manager/scripts/migrate_config.py \
             /etc/sleep-manager/sleep-manager-config.json \
@@ -67,15 +70,12 @@ if [ ! -f /etc/sleep-manager/sleep-manager-config.toml ]; then
                 mv "$tmp_config" /etc/sleep-manager/sleep-manager-config.toml
             else
                 rm -f "$tmp_config"
-                echo "WARNING: Config migration produced an empty TOML file; leaving config unset."
+                echo "WARNING: Config migration produced an empty TOML file; leaving config untouched."
             fi
         else
             rm -f "$tmp_config"
-            echo "WARNING: Config migration failed; leaving config unset."
+            echo "WARNING: Config migration failed; leaving config untouched."
         fi
-    elif [ -f /usr/lib/sleep-manager/config/sleep-manager-config.toml.example ]; then
-        cp /usr/lib/sleep-manager/config/sleep-manager-config.toml.example \
-            /etc/sleep-manager/sleep-manager-config.toml
     fi
 fi
 if [ -f /etc/sleep-manager/sleep-manager-config.toml ]; then
