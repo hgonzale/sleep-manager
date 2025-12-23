@@ -57,15 +57,28 @@ for unit in sleep-manager-sleeper.service sleep-manager-waker.service; do
     fi
 done
 
-if [ -f /etc/sleep-manager/sleep-manager-config.toml ]; then
-    chown root:sleep-manager /etc/sleep-manager/sleep-manager-config.toml
-    chmod 0640 /etc/sleep-manager/sleep-manager-config.toml
+if [ ! -f /etc/sleep-manager/sleep-manager-config.toml ]; then
+    if [ -f /etc/sleep-manager/sleep-manager-config.json ]; then
+        tmp_config="$(mktemp /tmp/sleep-manager-config.toml.XXXXXX)"
+        if /usr/lib/sleep-manager/scripts/migrate_config.py \
+            /etc/sleep-manager/sleep-manager-config.json \
+            "$tmp_config"; then
+            if [ -s "$tmp_config" ]; then
+                mv "$tmp_config" /etc/sleep-manager/sleep-manager-config.toml
+            else
+                rm -f "$tmp_config"
+                echo "WARNING: Config migration produced an empty TOML file; leaving config unset."
+            fi
+        else
+            rm -f "$tmp_config"
+            echo "WARNING: Config migration failed; leaving config unset."
+        fi
+    elif [ -f /usr/lib/sleep-manager/config/sleep-manager-config.toml.example ]; then
+        cp /usr/lib/sleep-manager/config/sleep-manager-config.toml.example \
+            /etc/sleep-manager/sleep-manager-config.toml
+    fi
 fi
-if [ -f /etc/sleep-manager/sleep-manager-config.json ] && \
-   [ ! -f /etc/sleep-manager/sleep-manager-config.toml ]; then
-    /usr/lib/sleep-manager/scripts/migrate_config.py \
-        /etc/sleep-manager/sleep-manager-config.json \
-        /etc/sleep-manager/sleep-manager-config.toml || true
+if [ -f /etc/sleep-manager/sleep-manager-config.toml ]; then
     chown root:sleep-manager /etc/sleep-manager/sleep-manager-config.toml
     chmod 0640 /etc/sleep-manager/sleep-manager-config.toml
 fi
