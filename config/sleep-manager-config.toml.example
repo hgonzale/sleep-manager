@@ -1,19 +1,19 @@
 # Sleep Manager configuration (TOML)
 # Both machines should use the same config content.
-# The only difference should be COMMON.ROLE ("waker" or "sleeper").
+# The only difference should be common.role ("waker" or "sleeper").
 
-[COMMON]
-DOMAIN = "localdomain"
-PORT = 51339
-DEFAULT_REQUEST_TIMEOUT = 4
-API_KEY = "your-secure-api-key-here"
-ROLE = "waker"
+[common]
+domain = "localdomain"
+port = 51339
+default_request_timeout = 4
+api_key = "your-secure-api-key-here"
+role = "waker"
 
-[WAKER]
+[waker]
 name = "waker_url"
 wol_exec = "/usr/sbin/etherwake"
 
-[SLEEPER]
+[sleeper]
 name = "sleeper_url"
 mac_address = "aa:bb:cc:dd:ee:ff"
 systemctl_command = "/usr/bin/systemctl"

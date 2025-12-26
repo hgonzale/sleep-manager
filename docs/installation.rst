@@ -42,9 +42,9 @@ Download the latest `.deb` from GitHub Releases and install it:
 
       sudo systemctl start sleep-manager
       sudo systemctl enable sleep-manager
-      # Both machines can use the same config content; only COMMON.ROLE should differ.
-      # Configure [COMMON] plus the role-specific section(s).
-      # COMMON.ROLE is required and must be "waker" or "sleeper".
+      # Both machines can use the same config content; only common.role should differ.
+      # Configure [common] plus the role-specific section(s).
+      # common.role is required and must be "waker" or "sleeper".
       # Only the APIs for the configured role will be exposed.
 
 Manual Installation (Non-Debian Distros)
@@ -94,7 +94,7 @@ If you prefer to install manually or need to customize the installation:
       sudo cp systemd/sleep-manager-delay.service /etc/systemd/system/
       sudo systemctl daemon-reload
       sudo systemctl enable sleep-manager
-      # Configure either [WAKER] or [SLEEPER] in the TOML file, not both.
+      # Configure [common] plus the role-specific section(s).
 
 Configuration
 -------------
@@ -110,19 +110,19 @@ Example configuration:
 
 .. code-block:: toml
 
-   [COMMON]
-   ROLE = "waker"
-   DOMAIN = "localdomain"
-   PORT = 51339
-   DEFAULT_REQUEST_TIMEOUT = 4
-   API_KEY = "your-secure-api-key-here"
+   [common]
+   role = "waker"
+   domain = "localdomain"
+   port = 51339
+   default_request_timeout = 4
+   api_key = "your-secure-api-key-here"
 
-   [WAKER]
+   [waker]
    # Only needed on the waker machine.
    name = "waker_url"
    wol_exec = "/usr/sbin/etherwake"
 
-   [SLEEPER]
+   [sleeper]
    # Required on both machines (waker needs these to wake the sleeper).
    name = "sleeper_url"
    mac_address = "AA:BB:CC:DD:EE:FF"

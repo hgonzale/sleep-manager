@@ -332,8 +332,8 @@ def waker_url() -> str:
     """
     try:
         waker_name = current_app.config["WAKER"]["name"]
-        domain = current_app.config["DOMAIN"]
-        port = current_app.config["PORT"]
+        domain = current_app.config["COMMON"]["domain"]
+        port = current_app.config["COMMON"]["port"]
 
         return f"http://{waker_name}.{domain}:{port}/waker"
     except KeyError as e:
@@ -359,7 +359,7 @@ def sleeper_request(endpoint: str) -> dict[str, Any]:
 
     **Request Details**:
         - Uses the configured API key for authentication
-        - Applies timeout based on DEFAULT_REQUEST_TIMEOUT configuration
+        - Applies timeout based on common.default_request_timeout configuration
         - Handles various network error conditions gracefully
 
     **Response Format**:
@@ -389,13 +389,13 @@ def sleeper_request(endpoint: str) -> dict[str, Any]:
     try:
         url = sleeper_url()
         # max value 3.05 is slightly larger than 3 (TCP response window)
-        request_timeout = max(current_app.config["DEFAULT_REQUEST_TIMEOUT"], 3.05)
+        request_timeout = max(current_app.config["COMMON"]["default_request_timeout"], 3.05)
         logger.info(f"Making request to sleeper at {url}/{endpoint}")
 
         _res: requests.Response = requests.get(
             f"{url}/{endpoint}",
             timeout=request_timeout,
-            headers={"X-API-Key": current_app.config["API_KEY"]},
+            headers={"X-API-Key": current_app.config["COMMON"]["api_key"]},
         )
 
         _json = {}

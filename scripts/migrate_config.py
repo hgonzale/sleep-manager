@@ -9,33 +9,33 @@ from typing import Any
 def _normalize_common(data: dict[str, Any]) -> dict[str, Any]:
     common: dict[str, Any] = {}
     common_source = None
-    for candidate in ("COMMON", "common"):
+    for candidate in ("common", "COMMON"):
         if isinstance(data.get(candidate), dict):
             common_source = data[candidate]
             break
 
     if common_source is not None:
-        common = dict(common_source)
+        common = {str(key).lower(): value for key, value in common_source.items()}
     else:
         key_map = {
-            "DOMAIN": "DOMAIN",
-            "domain": "DOMAIN",
-            "PORT": "PORT",
-            "port": "PORT",
-            "DEFAULT_REQUEST_TIMEOUT": "DEFAULT_REQUEST_TIMEOUT",
-            "default_request_timeout": "DEFAULT_REQUEST_TIMEOUT",
-            "API_KEY": "API_KEY",
-            "api_key": "API_KEY",
-            "ROLE": "ROLE",
-            "role": "ROLE",
+            "DOMAIN": "domain",
+            "domain": "domain",
+            "PORT": "port",
+            "port": "port",
+            "DEFAULT_REQUEST_TIMEOUT": "default_request_timeout",
+            "default_request_timeout": "default_request_timeout",
+            "API_KEY": "api_key",
+            "api_key": "api_key",
+            "ROLE": "role",
+            "role": "role",
         }
         for key, value in data.items():
             if key in key_map:
                 common[key_map[key]] = value
 
     role = None
-    if isinstance(common.get("ROLE"), str):
-        role = common["ROLE"].lower()
+    if isinstance(common.get("role"), str):
+        role = common["role"].lower()
     elif isinstance(data.get("ROLE"), str):
         role = data["ROLE"].lower()
     elif ("WAKER" in data or "waker" in data) and ("SLEEPER" not in data and "sleeper" not in data):
@@ -44,7 +44,7 @@ def _normalize_common(data: dict[str, Any]) -> dict[str, Any]:
         role = "sleeper"
 
     if role in ("waker", "sleeper"):
-        common["ROLE"] = role
+        common["role"] = role
 
     return common
 
@@ -85,12 +85,12 @@ def migrate_config(src: Path, dest: Path) -> bool:
 
     lines: list[str] = []
     common = _normalize_common(data)
-    lines.append("[COMMON]")
+    lines.append("[common]")
     for key, value in common.items():
         lines.append(f"{key} = {_format_value(value)}")
     lines.append("")
 
-    for section, candidates in (("WAKER", ("WAKER", "waker")), ("SLEEPER", ("SLEEPER", "sleeper"))):
+    for section, candidates in (("waker", ("waker", "WAKER")), ("sleeper", ("sleeper", "SLEEPER"))):
         section_data = None
         for candidate in candidates:
             if candidate in data:

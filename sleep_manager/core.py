@@ -101,7 +101,7 @@ def require_api_key(f: Callable[_P, _R]) -> Callable[_P, _R]:
 
     This decorator checks for the presence of a valid API key in the request headers.
     The API key must be provided in the 'X-API-Key' header and must match the
-    configured API_KEY in the application configuration.
+    configured common.api_key in the application configuration.
 
     Args:
         f: The function to decorate
@@ -116,7 +116,8 @@ def require_api_key(f: Callable[_P, _R]) -> Callable[_P, _R]:
     @wraps(f)
     def decorated_function(*args: _P.args, **kwargs: _P.kwargs) -> _R:
         api_key = request.headers.get("X-API-Key")
-        if not api_key or api_key != current_app.config["API_KEY"]:
+        configured_key = current_app.config.get("COMMON", {}).get("api_key")
+        if not api_key or not configured_key or api_key != configured_key:
             raise SleepManagerError("Invalid or missing API key", status_code=401)
         return f(*args, **kwargs)
 

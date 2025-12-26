@@ -113,8 +113,8 @@ class TestWakerConfiguration:
         """Test handling of missing configuration."""
         app = Flask(__name__)
         app.config["TESTING"] = True
-        app.config["API_KEY"] = "test-api-key"
-        # Missing WAKER configuration
+        app.config["COMMON"] = {"api_key": "test-api-key"}
+        # Missing waker configuration
 
         with app.app_context():
             from sleep_manager.waker import waker_url
@@ -126,8 +126,7 @@ class TestWakerConfiguration:
         """Test waker URL generation."""
         app = Flask(__name__)
         app.config["TESTING"] = True
-        app.config["DOMAIN"] = "test.local"
-        app.config["PORT"] = 5000
+        app.config["COMMON"] = {"domain": "test.local", "port": 5000}
         app.config["WAKER"] = {"name": "test-waker"}
 
         with app.app_context():

@@ -35,14 +35,14 @@ class TestMigrateConfig:
         migrate_config(src, dest)
         data = _load_toml(dest)
 
-        assert data["COMMON"]["DOMAIN"] == "localdomain"
-        assert data["COMMON"]["PORT"] == 51339
-        assert data["COMMON"]["DEFAULT_REQUEST_TIMEOUT"] == 4
-        assert data["COMMON"]["API_KEY"] == "secret"
-        assert data["WAKER"]["name"] == "waker"
-        assert data["WAKER"]["wol_exec"] == "/usr/sbin/etherwake"
-        assert data["SLEEPER"]["name"] == "sleeper"
-        assert data["SLEEPER"]["mac_address"] == "aa:bb:cc"
+        assert data["common"]["domain"] == "localdomain"
+        assert data["common"]["port"] == 51339
+        assert data["common"]["default_request_timeout"] == 4
+        assert data["common"]["api_key"] == "secret"
+        assert data["waker"]["name"] == "waker"
+        assert data["waker"]["wol_exec"] == "/usr/sbin/etherwake"
+        assert data["sleeper"]["name"] == "sleeper"
+        assert data["sleeper"]["mac_address"] == "aa:bb:cc"
 
     def test_migrate_lowercase_common_keys(self, tmp_path: Path) -> None:
         src = tmp_path / "config.json"
@@ -64,13 +64,13 @@ class TestMigrateConfig:
         migrate_config(src, dest)
         data = _load_toml(dest)
 
-        assert data["COMMON"]["DOMAIN"] == "localdomain"
-        assert data["COMMON"]["PORT"] == 51339
-        assert data["COMMON"]["DEFAULT_REQUEST_TIMEOUT"] == 4
-        assert data["COMMON"]["API_KEY"] == "secret"
-        assert data["COMMON"]["ROLE"] == "waker"
-        assert data["WAKER"]["name"] == "waker"
-        assert data["SLEEPER"]["mac_address"] == "aa:bb:cc"
+        assert data["common"]["domain"] == "localdomain"
+        assert data["common"]["port"] == 51339
+        assert data["common"]["default_request_timeout"] == 4
+        assert data["common"]["api_key"] == "secret"
+        assert data["common"]["role"] == "waker"
+        assert data["waker"]["name"] == "waker"
+        assert data["sleeper"]["mac_address"] == "aa:bb:cc"
 
     def test_migrate_role_inference(self, tmp_path: Path) -> None:
         src = tmp_path / "config.json"
@@ -87,7 +87,7 @@ class TestMigrateConfig:
         migrate_config(src, dest)
         data = _load_toml(dest)
 
-        assert data["COMMON"]["ROLE"] == "waker"
+        assert data["common"]["role"] == "waker"
 
     def test_migrate_ambiguous_role(self, tmp_path: Path) -> None:
         src = tmp_path / "config.json"
@@ -105,4 +105,4 @@ class TestMigrateConfig:
         migrate_config(src, dest)
         data = _load_toml(dest)
 
-        assert "ROLE" not in data["COMMON"]
+        assert "role" not in data["common"]

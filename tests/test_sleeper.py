@@ -94,8 +94,8 @@ class TestSleeperConfiguration:
         """Test handling of missing configuration."""
         app = Flask(__name__)
         app.config["TESTING"] = True
-        app.config["API_KEY"] = "test-api-key"
-        # Missing SLEEPER configuration
+        app.config["COMMON"] = {"api_key": "test-api-key"}
+        # Missing sleeper configuration
 
         with app.app_context():
             from sleep_manager.sleeper import sleeper_url
@@ -107,8 +107,7 @@ class TestSleeperConfiguration:
         """Test sleeper URL generation."""
         app = Flask(__name__)
         app.config["TESTING"] = True
-        app.config["DOMAIN"] = "test.local"
-        app.config["PORT"] = 5000
+        app.config["COMMON"] = {"domain": "test.local", "port": 5000}
         app.config["SLEEPER"] = {"name": "test-sleeper"}
 
         with app.app_context():

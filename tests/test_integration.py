@@ -150,9 +150,10 @@ class TestConfiguration:
         make_config("sleeper")
         app = create_app()
         app.config["TESTING"] = True
-        # Remove API_KEY if present
-        if "API_KEY" in app.config:
-            del app.config["API_KEY"]
+        # Remove api_key if present
+        common = app.config.get("COMMON")
+        if isinstance(common, dict) and "api_key" in common:
+            del common["api_key"]
         client = app.test_client()
         # Call a protected endpoint
         response = client.get("/sleeper/config", headers={"X-API-Key": "test-api-key"})

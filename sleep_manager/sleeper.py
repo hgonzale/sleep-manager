@@ -29,8 +29,9 @@ def print_config() -> dict[str, Any]:
 
     config = deepcopy(dict(current_app.config))
     # Hide API key
-    if "API_KEY" in config:
-        config["API_KEY"] = "***hidden***"
+    common = config.get("COMMON")
+    if isinstance(common, dict) and "api_key" in common:
+        common["api_key"] = "***hidden***"
     # Recursively sanitize
     return sanitize(config)  # type: ignore
 
@@ -246,8 +247,8 @@ def sleeper_url() -> str:
     """
     try:
         sleeper_name = current_app.config["SLEEPER"]["name"]
-        domain = current_app.config["DOMAIN"]
-        port = current_app.config["PORT"]
+        domain = current_app.config["COMMON"]["domain"]
+        port = current_app.config["COMMON"]["port"]
 
         return f"http://{sleeper_name}.{domain}:{port}/sleeper"
     except KeyError as e:

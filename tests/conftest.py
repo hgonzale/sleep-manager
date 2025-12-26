@@ -7,18 +7,18 @@ import pytest
 
 def _write_config(path: Path, role: str) -> None:
     content = f"""
-[COMMON]
-ROLE = "{role}"
-DOMAIN = "test.local"
-PORT = 5000
-DEFAULT_REQUEST_TIMEOUT = 3
-API_KEY = "test-api-key"
+[common]
+role = "{role}"
+domain = "test.local"
+port = 5000
+default_request_timeout = 3
+api_key = "test-api-key"
 
-[WAKER]
+[waker]
 name = "test-waker"
 wol_exec = "/usr/sbin/etherwake"
 
-[SLEEPER]
+[sleeper]
 name = "test-sleeper"
 mac_address = "00:11:22:33:44:55"
 systemctl_command = "/usr/bin/systemctl"

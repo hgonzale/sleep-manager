@@ -165,7 +165,7 @@ import tomllib
 from pathlib import Path
 
 data = tomllib.loads(Path("/etc/sleep-manager/sleep-manager-config.toml").read_text())
-print(data.get("WAKER", {}).get("name", ""))
+print(data.get("waker", {}).get("name", ""))
 PY
     )
     sleeper_hostname=$(python3 - <<'PY' 2>/dev/null || echo ""
@@ -173,13 +173,13 @@ import tomllib
 from pathlib import Path
 
 data = tomllib.loads(Path("/etc/sleep-manager/sleep-manager-config.toml").read_text())
-print(data.get("SLEEPER", {}).get("name", ""))
+print(data.get("sleeper", {}).get("name", ""))
 PY
     )
     
     if [[ -z "$waker_hostname" || -z "$sleeper_hostname" ]]; then
         print_warning "Could not extract hostnames from configuration file."
-        print_warning "Please ensure the configuration file contains valid WAKER.name and SLEEPER.name values."
+        print_warning "Please ensure the configuration file contains valid waker.name and sleeper.name values."
         return 1
     fi
     
