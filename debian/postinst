@@ -77,8 +77,16 @@ if [ -f /etc/sleep-manager/sleep-manager-config.json ]; then
             echo "WARNING: Config migration failed; leaving config unset."
         fi
         rm -f "$tmp_config"
-    elif [ -f "$example_config" ] && \
-       cmp -s /etc/sleep-manager/sleep-manager-config.toml "$example_config"; then
+    else
+        is_example=0
+        if [ -f "$example_config" ] && \
+           cmp -s /etc/sleep-manager/sleep-manager-config.toml "$example_config"; then
+            is_example=1
+        elif grep -q "your-secure-api-key-here" /etc/sleep-manager/sleep-manager-config.toml 2>/dev/null; then
+            is_example=1
+        fi
+    fi
+    if [ "${is_example:-0}" -eq 1 ]; then
         rm -f /etc/sleep-manager/sleep-manager-config.toml
         tmp_config="$(mktemp /tmp/sleep-manager-config.toml.XXXXXX)"
         if /usr/lib/sleep-manager/scripts/migrate_config.py \
