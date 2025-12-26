@@ -27,6 +27,23 @@ jobs:
       - name: Postinst smoke test
         run: |
           set -euo pipefail
+          assert_config() {
+            local label="$1"
+            if ! sudo test -f /etc/sleep-manager/sleep-manager-config.toml; then
+              echo "Missing /etc/sleep-manager/sleep-manager-config.toml ($label)"
+              exit 1
+            fi
+            if ! sudo grep -q '^\[common\]' /etc/sleep-manager/sleep-manager-config.toml; then
+              echo "Missing [common] section ($label)"
+              sudo cat /etc/sleep-manager/sleep-manager-config.toml
+              exit 1
+            fi
+            if ! sudo grep -q '^api_key = "secret"$' /etc/sleep-manager/sleep-manager-config.toml; then
+              echo "Missing api_key entry ($label)"
+              sudo cat /etc/sleep-manager/sleep-manager-config.toml
+              exit 1
+            fi
+          }
           sudo mkdir -p /etc/sleep-manager
           cat <<'EOF' | sudo tee /etc/sleep-manager/sleep-manager-config.json >/dev/null
           {
@@ -40,9 +57,7 @@ jobs:
           }
           EOF
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y ./dist/deb/*.deb
-          sudo test -f /etc/sleep-manager/sleep-manager-config.toml
-          sudo grep -q '^\[common\]' /etc/sleep-manager/sleep-manager-config.toml
-          sudo grep -q '^api_key = "secret"$' /etc/sleep-manager/sleep-manager-config.toml
+          assert_config "json migration"
           sudo rm -f /etc/sleep-manager/sleep-manager-config.json
           cat <<'EOF' | sudo tee /etc/sleep-manager/sleep-manager-config.toml >/dev/null
           [COMMON]
@@ -61,9 +76,7 @@ jobs:
           mac_address = "aa:bb:cc"
           EOF
           sudo UCF_FORCE_CONFFNEW=1 DEBIAN_FRONTEND=noninteractive apt-get install -y --reinstall ./dist/deb/*.deb
-          sudo test -f /etc/sleep-manager/sleep-manager-config.toml
-          sudo grep -q '^\[common\]' /etc/sleep-manager/sleep-manager-config.toml
-          sudo grep -q '^api_key = "secret"$' /etc/sleep-manager/sleep-manager-config.toml
+          assert_config "toml migration"
 
       - name: Upload .deb artifact
         uses: actions/upload-artifact@v4
