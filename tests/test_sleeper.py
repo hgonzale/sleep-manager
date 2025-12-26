@@ -40,6 +40,17 @@ class TestSleeperEndpoints:
         data = response.get_json()
         assert "SLEEPER" in data
 
+    def test_config_endpoint_sanitizes_bytes(self, app: Flask, client: FlaskClient) -> None:
+        """Test config endpoint sanitizes bytes values."""
+        app.config["CUSTOM_BYTES"] = b"hello"
+        app.config["CUSTOM_LIST"] = [b"\xff", "ok"]
+        response = client.get("/sleeper/config", headers={"X-API-Key": "test-api-key"})
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["CUSTOM_BYTES"] == "hello"
+        assert data["CUSTOM_LIST"][0] == "b'\\xff'"
+        assert data["CUSTOM_LIST"][1] == "ok"
+
     def test_suspend_endpoint_without_api_key(self, client: FlaskClient) -> None:
         """Test suspend endpoint without API key returns 401."""
         response = client.get("/sleeper/suspend")

@@ -23,6 +23,11 @@ def print_config() -> dict[str, Any]:
             return {k: sanitize(v) for k, v in obj.items()}
         elif isinstance(obj, list):
             return [sanitize(v) for v in obj]
+        elif isinstance(obj, bytes):
+            try:
+                return obj.decode()
+            except Exception:
+                return str(obj)
         elif isinstance(obj, datetime.timedelta):
             return str(obj)
         return obj

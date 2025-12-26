@@ -1,25 +1,28 @@
 from __future__ import annotations
 
+import socket
 from pathlib import Path
 
 import pytest
 
 
 def _write_config(path: Path, role: str) -> None:
+    hostname = socket.gethostname()
+    waker_name = hostname if role == "waker" else "test-waker"
+    sleeper_name = hostname if role == "sleeper" else "test-sleeper"
     content = f"""
 [common]
-role = "{role}"
 domain = "test.local"
 port = 5000
 default_request_timeout = 3
 api_key = "test-api-key"
 
 [waker]
-name = "test-waker"
+name = "{waker_name}"
 wol_exec = "/usr/sbin/etherwake"
 
 [sleeper]
-name = "test-sleeper"
+name = "{sleeper_name}"
 mac_address = "00:11:22:33:44:55"
 systemctl_command = "/usr/bin/systemctl"
 suspend_verb = "suspend"

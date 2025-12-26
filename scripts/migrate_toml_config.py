@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 ALLOWED_SECTIONS = {"common", "waker", "sleeper"}
-COMMON_KEY_ORDER = ["role", "domain", "port", "default_request_timeout", "api_key"]
+COMMON_KEY_ORDER = ["domain", "port", "default_request_timeout", "api_key"]
 WAKER_KEY_ORDER = ["name", "wol_exec"]
 SLEEPER_KEY_ORDER = ["name", "mac_address", "systemctl_command", "suspend_verb", "status_verb"]
 
@@ -43,7 +43,6 @@ def _normalize_common(common_data: dict[str, Any], top_level_data: dict[str, Any
         "port": "port",
         "default_request_timeout": "default_request_timeout",
         "api_key": "api_key",
-        "role": "role",
     }
     normalized = _lower_key_map(common_data, key_map)
     for key, value in top_level_data.items():

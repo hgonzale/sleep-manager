@@ -26,25 +26,10 @@ def _normalize_common(data: dict[str, Any]) -> dict[str, Any]:
             "default_request_timeout": "default_request_timeout",
             "API_KEY": "api_key",
             "api_key": "api_key",
-            "ROLE": "role",
-            "role": "role",
         }
         for key, value in data.items():
             if key in key_map:
                 common[key_map[key]] = value
-
-    role = None
-    if isinstance(common.get("role"), str):
-        role = common["role"].lower()
-    elif isinstance(data.get("ROLE"), str):
-        role = data["ROLE"].lower()
-    elif ("WAKER" in data or "waker" in data) and ("SLEEPER" not in data and "sleeper" not in data):
-        role = "waker"
-    elif ("SLEEPER" in data or "sleeper" in data) and ("WAKER" not in data and "waker" not in data):
-        role = "sleeper"
-
-    if role in ("waker", "sleeper"):
-        common["role"] = role
 
     return common
 

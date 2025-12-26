@@ -1,7 +1,7 @@
 # Sleep Manager
 
 Sleep Manager is a Flask app for managing sleep/wake cycles between two machines on the same LAN. A **waker** sends Wake-on-LAN packets, and a **sleeper** suspends itself on demand.
-Both machines can use the same config content; the only difference should be `common.role` (`waker` or `sleeper`). Only the APIs for that role are exposed. Shared settings live under `[common]`; waker machines need `[waker]` plus the sleeper name/MAC in `[sleeper]`, and sleeper machines need `[sleeper]`.
+Both machines can use the same config content; the active role is derived from the machine hostname matching `waker.name` or `sleeper.name`. Only the APIs for that role are exposed. Shared settings live under `[common]`; waker machines need `[waker]` plus the sleeper name/MAC in `[sleeper]`, and sleeper machines need `[sleeper]`.
 
 ## Requirements
 
@@ -33,7 +33,6 @@ Config file path (default): `/etc/sleep-manager/sleep-manager-config.toml`
 
 Most important settings:
 
-- `common.role`: required, either `waker` or `sleeper`
 - `common.api_key`: shared secret for all authenticated endpoints
 - `common.domain` and `common.port`: used to construct URLs for inter-machine calls
 - `sleeper.name`: hostname used for sleeper API URLs (also required on the waker)

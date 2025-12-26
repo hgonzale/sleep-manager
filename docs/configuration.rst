@@ -7,9 +7,10 @@ Sleep Manager loads configuration from TOML. The default path is:
 
 You can override this path with the ``SLEEP_MANAGER_CONFIG_PATH`` environment
 variable.
-Both machines can use the same config content; the only difference should be ``common.role``.
-Shared settings live under ``[common]``. Set ``common.role`` to ``waker`` or ``sleeper`` to select behavior.
-Only the APIs for that role are exposed. Sleeper machines need ``[common]`` + ``[sleeper]``.
+Both machines can use the same config content; the active role is derived from the
+machine hostname matching ``waker.name`` or ``sleeper.name``.
+Shared settings live under ``[common]``. Only the APIs for the detected role are exposed.
+Sleeper machines need ``[common]`` + ``[sleeper]``.
 Waker machines need ``[common]`` + ``[waker]`` + ``[sleeper]`` (name + mac_address).
 
 Example configuration
@@ -18,7 +19,6 @@ Example configuration
 .. code-block:: toml
 
    [common]
-   role = "waker"
    domain = "localdomain"
    port = 51339
    default_request_timeout = 4
@@ -42,7 +42,6 @@ Example configuration
 Key settings
 ------------
 
-* ``common.role``: Required. Either ``waker`` or ``sleeper``.
 * ``common.api_key``: Required. Shared secret for all authenticated endpoints.
 * ``common.domain``: DNS domain used to build machine URLs.
 * ``common.port``: HTTP port used by both machines (default 51339).
@@ -62,6 +61,13 @@ Sleeper settings (``sleeper``)
 * ``systemctl_command``: Path to ``systemctl``.
 * ``suspend_verb``: Verb passed to systemctl to suspend.
 * ``status_verb``: Verb passed to systemctl to read status.
+
+Role selection
+--------------
+
+Sleep Manager selects the role based on the machine hostname. If the hostname matches
+``waker.name`` (or ``waker.name`` + ``common.domain``), the waker APIs are enabled. If it
+matches ``sleeper.name`` (or ``sleeper.name`` + ``common.domain``), the sleeper APIs are enabled.
 
 Security notes
 --------------

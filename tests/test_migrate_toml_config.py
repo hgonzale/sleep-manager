@@ -42,7 +42,6 @@ mac_address = "aa:bb:cc"
         assert backups
 
         data = _load_toml(config_path)
-        assert data["common"]["role"] == "waker"
         assert data["common"]["domain"] == "localdomain"
         assert data["common"]["port"] == 51339
         assert data["common"]["default_request_timeout"] == 4
@@ -58,7 +57,6 @@ DOMAIN = "localdomain"
 PORT = 51339
 DEFAULT_REQUEST_TIMEOUT = 4
 API_KEY = "secret"
-ROLE = "sleeper"
 
 [SLEEPER]
 name = "sleeper"
@@ -69,7 +67,6 @@ mac = "aa:bb:cc"
         migrated = migrate_toml_config(config_path)
         assert migrated is True
         data = _load_toml(config_path)
-        assert data["common"]["role"] == "sleeper"
         assert data["common"]["api_key"] == "secret"
         assert data["sleeper"]["mac_address"] == "aa:bb:cc"
 
@@ -77,7 +74,6 @@ mac = "aa:bb:cc"
         config_path = tmp_path / "sleep-manager-config.toml"
         content = """
 [common]
-role = "waker"
 domain = "localdomain"
 port = 51339
 default_request_timeout = 4

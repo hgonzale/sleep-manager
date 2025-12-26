@@ -54,7 +54,6 @@ class TestMigrateConfig:
                     "port": 51339,
                     "default_request_timeout": 4,
                     "api_key": "secret",
-                    "role": "waker",
                     "waker": {"name": "waker", "wol_exec": "/usr/sbin/etherwake"},
                     "sleeper": {"name": "sleeper", "mac": "aa:bb:cc"},
                 }
@@ -68,7 +67,6 @@ class TestMigrateConfig:
         assert data["common"]["port"] == 51339
         assert data["common"]["default_request_timeout"] == 4
         assert data["common"]["api_key"] == "secret"
-        assert data["common"]["role"] == "waker"
         assert data["waker"]["name"] == "waker"
         assert data["sleeper"]["mac_address"] == "aa:bb:cc"
 
@@ -87,7 +85,7 @@ class TestMigrateConfig:
         migrate_config(src, dest)
         data = _load_toml(dest)
 
-        assert data["common"]["role"] == "waker"
+        assert "role" not in data["common"]
 
     def test_migrate_ambiguous_role(self, tmp_path: Path) -> None:
         src = tmp_path / "config.json"

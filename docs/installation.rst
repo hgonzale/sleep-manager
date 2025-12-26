@@ -42,10 +42,10 @@ Download the latest `.deb` from GitHub Releases and install it:
 
       sudo systemctl start sleep-manager
       sudo systemctl enable sleep-manager
-      # Both machines can use the same config content; only common.role should differ.
+      # Both machines can use the same config content.
       # Configure [common] plus the role-specific section(s).
-      # common.role is required and must be "waker" or "sleeper".
-      # Only the APIs for the configured role will be exposed.
+      # The active role is selected by matching the hostname to waker.name or sleeper.name.
+      # Only the APIs for the detected role will be exposed.
 
 Manual Installation (Non-Debian Distros)
 ----------------------------------------
@@ -111,7 +111,6 @@ Example configuration:
 .. code-block:: toml
 
    [common]
-   role = "waker"
    domain = "localdomain"
    port = 51339
    default_request_timeout = 4

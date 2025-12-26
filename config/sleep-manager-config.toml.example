@@ -1,13 +1,12 @@
 # Sleep Manager configuration (TOML)
 # Both machines should use the same config content.
-# The only difference should be common.role ("waker" or "sleeper").
+# The only difference should be the machine hostname matching waker.name or sleeper.name.
 
 [common]
 domain = "localdomain"
 port = 51339
 default_request_timeout = 4
 api_key = "your-secure-api-key-here"
-role = "waker"
 
 [waker]
 name = "waker_url"

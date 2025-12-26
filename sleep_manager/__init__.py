@@ -1,5 +1,6 @@
 import logging
 import os
+import socket
 import tomllib
 from pathlib import Path
 from typing import Any, cast
@@ -35,6 +36,54 @@ def _normalize_section(config_data: dict[str, Any], section: str) -> dict[str, A
     if not isinstance(section_value, dict):
         raise ConfigurationError(f"{section} config section must be a table")
     return _lowercase_keys(section_value)
+
+
+def _hostname_identifiers() -> tuple[set[str], str, str]:
+    hostname = socket.gethostname()
+    fqdn = socket.getfqdn()
+    identifiers = {hostname.lower(), fqdn.lower()}
+    for value in list(identifiers):
+        if "." in value:
+            identifiers.add(value.split(".", 1)[0])
+    return identifiers, hostname, fqdn
+
+
+def _role_candidates(name: str | None, domain: str | None) -> set[str]:
+    candidates: set[str] = set()
+    if name:
+        candidates.add(name.lower())
+        if domain:
+            candidates.add(f"{name}.{domain}".lower())
+    return candidates
+
+
+def _resolve_role(common: dict[str, Any], waker: dict[str, Any], sleeper: dict[str, Any]) -> str:
+    identifiers, hostname, fqdn = _hostname_identifiers()
+    domain = common.get("domain")
+    waker_candidates = _role_candidates(waker.get("name"), domain)
+    sleeper_candidates = _role_candidates(sleeper.get("name"), domain)
+
+    matches: dict[str, set[str]] = {}
+    if identifiers & waker_candidates:
+        matches["waker"] = identifiers & waker_candidates
+    if identifiers & sleeper_candidates:
+        matches["sleeper"] = identifiers & sleeper_candidates
+
+    if len(matches) == 1:
+        return next(iter(matches.keys()))
+    if len(matches) > 1:
+        raise ConfigurationError(
+            "Hostname matches both waker and sleeper. "
+            f"hostname={hostname!s}, fqdn={fqdn!s}, "
+            f"waker_candidates={sorted(waker_candidates)!s}, "
+            f"sleeper_candidates={sorted(sleeper_candidates)!s}"
+        )
+    raise ConfigurationError(
+        "Hostname did not match waker or sleeper names. "
+        f"hostname={hostname!s}, fqdn={fqdn!s}, "
+        f"waker_candidates={sorted(waker_candidates)!s}, "
+        f"sleeper_candidates={sorted(sleeper_candidates)!s}"
+    )
 
 
 def _resolve_config_path() -> Path:
@@ -94,11 +143,7 @@ def create_app() -> Flask:
         }
     )
 
-    role = common_config.get("role")
-    if role is None:
-        raise ConfigurationError("Missing required common.role (must be 'waker' or 'sleeper')")
-    if role not in ("waker", "sleeper"):
-        raise ConfigurationError("common.role must be 'waker' or 'sleeper'")
+    role = _resolve_role(common_config, waker_config, sleeper_config)
     logger.info("Loaded config for role=%s", role)
 
     # Register error handlers
@@ -160,7 +205,7 @@ def create_app() -> Flask:
                 common = current_app.config.get("COMMON", {})
                 waker = current_app.config.get("WAKER", {})
                 sleeper = current_app.config.get("SLEEPER", {})
-                role = common.get("role")
+                role = _resolve_role(common, waker, sleeper)
 
                 if role == "waker":
                     required_waker = ["name", "wol_exec"]
@@ -183,9 +228,6 @@ def create_app() -> Flask:
                     for key in required_sleeper:
                         if key not in sleeper:
                             config_errors.append(f"Missing sleeper.{key}")
-                else:
-                    config_errors.append("Missing common.role")
-
                 if "api_key" not in common:
                     config_errors.append("Missing common.api_key")
 
