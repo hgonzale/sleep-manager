@@ -79,6 +79,7 @@ if [ -f /etc/sleep-manager/sleep-manager-config.json ]; then
         rm -f "$tmp_config"
     elif [ -f "$example_config" ] && \
        cmp -s /etc/sleep-manager/sleep-manager-config.toml "$example_config"; then
+        rm -f /etc/sleep-manager/sleep-manager-config.toml
         tmp_config="$(mktemp /tmp/sleep-manager-config.toml.XXXXXX)"
         if /usr/lib/sleep-manager/scripts/migrate_config.py \
             /etc/sleep-manager/sleep-manager-config.json \
