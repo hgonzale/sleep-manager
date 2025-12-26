@@ -65,15 +65,18 @@ if [ -f /etc/sleep-manager/sleep-manager-config.json ]; then
             /etc/sleep-manager/sleep-manager-config.json \
             "$tmp_config"; then
             if [ -s "$tmp_config" ]; then
-                mv "$tmp_config" /etc/sleep-manager/sleep-manager-config.toml
+                if command -v ucf >/dev/null 2>&1; then
+                    ucf --debconf-ok "$tmp_config" /etc/sleep-manager/sleep-manager-config.toml
+                else
+                    mv "$tmp_config" /etc/sleep-manager/sleep-manager-config.toml
+                fi
             else
-                rm -f "$tmp_config"
                 echo "WARNING: Config migration produced an empty TOML file; leaving config unset."
             fi
         else
-            rm -f "$tmp_config"
             echo "WARNING: Config migration failed; leaving config unset."
         fi
+        rm -f "$tmp_config"
     elif [ -f "$example_config" ] && \
        cmp -s /etc/sleep-manager/sleep-manager-config.toml "$example_config"; then
         tmp_config="$(mktemp /tmp/sleep-manager-config.toml.XXXXXX)"
@@ -81,15 +84,39 @@ if [ -f /etc/sleep-manager/sleep-manager-config.json ]; then
             /etc/sleep-manager/sleep-manager-config.json \
             "$tmp_config"; then
             if [ -s "$tmp_config" ]; then
-                mv "$tmp_config" /etc/sleep-manager/sleep-manager-config.toml
+                if command -v ucf >/dev/null 2>&1; then
+                    ucf --debconf-ok "$tmp_config" /etc/sleep-manager/sleep-manager-config.toml
+                else
+                    mv "$tmp_config" /etc/sleep-manager/sleep-manager-config.toml
+                fi
             else
-                rm -f "$tmp_config"
                 echo "WARNING: Config migration produced an empty TOML file; leaving config untouched."
             fi
         else
-            rm -f "$tmp_config"
             echo "WARNING: Config migration failed; leaving config untouched."
         fi
+        rm -f "$tmp_config"
+    fi
+elif [ -f /etc/sleep-manager/sleep-manager-config.toml ]; then
+    if command -v ucf >/dev/null 2>&1; then
+        tmp_config="$(mktemp /tmp/sleep-manager-config.toml.XXXXXX)"
+        if /usr/lib/sleep-manager/scripts/migrate_toml_config.py \
+            /etc/sleep-manager/sleep-manager-config.toml \
+            --dest "$tmp_config"; then
+            if [ -s "$tmp_config" ]; then
+                ucf --debconf-ok "$tmp_config" /etc/sleep-manager/sleep-manager-config.toml
+            else
+                echo "WARNING: TOML config migration produced an empty file; leaving config untouched."
+            fi
+        else
+            status=$?
+            if [ "$status" -ne 2 ]; then
+                echo "WARNING: TOML config migration failed; leaving config untouched."
+            fi
+        fi
+        rm -f "$tmp_config"
+    else
+        echo "WARNING: ucf not available; skipping TOML config migration."
     fi
 elif [ ! -f /etc/sleep-manager/sleep-manager-config.toml ] && [ -f "$example_config" ]; then
     cp "$example_config" /etc/sleep-manager/sleep-manager-config.toml

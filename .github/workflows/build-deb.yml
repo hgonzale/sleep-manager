@@ -24,6 +24,47 @@ jobs:
       - name: Build package
         run: ./scripts/build-deb.sh
 
+      - name: Postinst smoke test
+        run: |
+          set -euo pipefail
+          sudo mkdir -p /etc/sleep-manager
+          cat <<'EOF' | sudo tee /etc/sleep-manager/sleep-manager-config.json >/dev/null
+          {
+            "DOMAIN": "localdomain",
+            "PORT": 51339,
+            "DEFAULT_REQUEST_TIMEOUT": 4,
+            "API_KEY": "secret",
+            "ROLE": "waker",
+            "WAKER": {"name": "waker", "wol_exec": "/usr/sbin/etherwake"},
+            "SLEEPER": {"name": "sleeper", "mac_address": "aa:bb:cc"}
+          }
+          EOF
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y ./dist/deb/*.deb
+          sudo test -f /etc/sleep-manager/sleep-manager-config.toml
+          sudo grep -q '^\[common\]' /etc/sleep-manager/sleep-manager-config.toml
+          sudo grep -q '^role = "waker"$' /etc/sleep-manager/sleep-manager-config.toml
+          sudo rm -f /etc/sleep-manager/sleep-manager-config.json
+          cat <<'EOF' | sudo tee /etc/sleep-manager/sleep-manager-config.toml >/dev/null
+          [COMMON]
+          ROLE = "waker"
+          DOMAIN = "localdomain"
+          PORT = 51339
+          DEFAULT_REQUEST_TIMEOUT = 4
+          API_KEY = "secret"
+
+          [WAKER]
+          name = "waker"
+          wol_exec = "/usr/sbin/etherwake"
+
+          [SLEEPER]
+          name = "sleeper"
+          mac_address = "aa:bb:cc"
+          EOF
+          sudo UCF_FORCE_CONFFNEW=1 DEBIAN_FRONTEND=noninteractive apt-get install -y --reinstall ./dist/deb/*.deb
+          sudo test -f /etc/sleep-manager/sleep-manager-config.toml
+          sudo grep -q '^\[common\]' /etc/sleep-manager/sleep-manager-config.toml
+          sudo grep -q '^role = "waker"$' /etc/sleep-manager/sleep-manager-config.toml
+
       - name: Upload .deb artifact
         uses: actions/upload-artifact@v4
         with:

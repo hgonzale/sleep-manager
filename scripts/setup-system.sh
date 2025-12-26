@@ -58,6 +58,19 @@ command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
+# Migrate legacy TOML config if needed (skip when JSON config exists).
+migrate_toml_config_if_needed() {
+    local config_path="/etc/sleep-manager/sleep-manager-config.toml"
+    local json_path="/etc/sleep-manager/sleep-manager-config.json"
+    local script_path="$PROJECT_DIR/scripts/migrate_toml_config.py"
+
+    if [[ -f "$config_path" && ! -f "$json_path" && -f "$script_path" ]]; then
+        if ! python3 "$script_path" "$config_path" >/dev/null 2>&1; then
+            print_warning "TOML config migration failed; leaving config untouched."
+        fi
+    fi
+}
+
 # Function to configure sudoers for sleep-manager runtime commands
 configure_sudoers() {
     local role="$1"
@@ -305,6 +318,8 @@ setup_sleeper() {
     else
         print_warning "Example configuration file not found. Please create /etc/sleep-manager/sleep-manager-config.toml manually."
     fi
+
+    migrate_toml_config_if_needed
     
     chown -R sleep-manager:sleep-manager /usr/lib/sleep-manager
     chmod 755 /usr/lib/sleep-manager
@@ -432,6 +447,8 @@ setup_waker() {
     else
         print_warning "Example configuration file not found. Please create /etc/sleep-manager/sleep-manager-config.toml manually."
     fi
+
+    migrate_toml_config_if_needed
     
     chown -R sleep-manager:sleep-manager /usr/lib/sleep-manager
     chmod 755 /usr/lib/sleep-manager
