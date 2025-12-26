@@ -42,7 +42,7 @@ jobs:
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y ./dist/deb/*.deb
           sudo test -f /etc/sleep-manager/sleep-manager-config.toml
           sudo grep -q '^\[common\]' /etc/sleep-manager/sleep-manager-config.toml
-          sudo grep -q '^role = "waker"$' /etc/sleep-manager/sleep-manager-config.toml
+          sudo grep -q '^api_key = "secret"$' /etc/sleep-manager/sleep-manager-config.toml
           sudo rm -f /etc/sleep-manager/sleep-manager-config.json
           cat <<'EOF' | sudo tee /etc/sleep-manager/sleep-manager-config.toml >/dev/null
           [COMMON]
@@ -63,7 +63,7 @@ jobs:
           sudo UCF_FORCE_CONFFNEW=1 DEBIAN_FRONTEND=noninteractive apt-get install -y --reinstall ./dist/deb/*.deb
           sudo test -f /etc/sleep-manager/sleep-manager-config.toml
           sudo grep -q '^\[common\]' /etc/sleep-manager/sleep-manager-config.toml
-          sudo grep -q '^role = "waker"$' /etc/sleep-manager/sleep-manager-config.toml
+          sudo grep -q '^api_key = "secret"$' /etc/sleep-manager/sleep-manager-config.toml
 
       - name: Upload .deb artifact
         uses: actions/upload-artifact@v4
