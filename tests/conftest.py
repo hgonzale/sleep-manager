@@ -5,6 +5,8 @@ from pathlib import Path
 
 import pytest
 
+from sleep_manager.state_machine import SleeperStateMachine
+
 
 def _write_config(path: Path, role: str) -> None:
     hostname = socket.gethostname()
@@ -16,6 +18,9 @@ domain = "test.local"
 port = 5000
 default_request_timeout = 3
 api_key = "test-api-key"
+heartbeat_interval = 60
+wake_timeout = 120
+heartbeat_miss_threshold = 3
 
 [waker]
 name = "{waker_name}"
@@ -40,3 +45,17 @@ def make_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         return config_path
 
     return _make
+
+
+@pytest.fixture
+def state_machine():
+    """Pre-built SleeperStateMachine with a mocked time function."""
+    clock = [1_000_000.0]
+    sm = SleeperStateMachine(
+        wake_timeout=120.0,
+        heartbeat_interval=60.0,
+        heartbeat_miss_threshold=3,
+        _time_fn=lambda: clock[0],
+    )
+    sm._clock = clock  # expose clock for tests that need to advance time
+    return sm

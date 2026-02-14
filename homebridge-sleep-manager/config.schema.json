@@ -1,0 +1,36 @@
+{
+  "pluginAlias": "SleepManagerSwitch",
+  "pluginType": "accessory",
+  "singular": false,
+  "schema": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "title": "Name",
+        "type": "string",
+        "required": true,
+        "default": "Sleep Manager"
+      },
+      "waker_url": {
+        "title": "Waker URL",
+        "type": "string",
+        "required": true,
+        "placeholder": "http://waker_url:51339",
+        "description": "Base URL of the waker machine (no trailing slash, no path)"
+      },
+      "api_key": {
+        "title": "API Key",
+        "type": "string",
+        "required": true,
+        "description": "X-API-Key value configured in sleep-manager"
+      },
+      "poll_interval": {
+        "title": "Poll Interval (seconds)",
+        "type": "integer",
+        "default": 30,
+        "minimum": 5,
+        "description": "How often to poll /waker/status"
+      }
+    }
+  }
+}

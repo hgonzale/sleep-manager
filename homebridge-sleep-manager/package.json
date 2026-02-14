@@ -1,0 +1,20 @@
+{
+  "name": "homebridge-sleep-manager",
+  "version": "2.0.0",
+  "description": "Homebridge plugin for sleep-manager: switch with StatusFault on wake failure",
+  "main": "index.js",
+  "keywords": [
+    "homebridge-plugin",
+    "sleep-manager",
+    "wol",
+    "wake-on-lan"
+  ],
+  "engines": {
+    "homebridge": ">=2.0.0",
+    "node": ">=18.0.0"
+  },
+  "peerDependencies": {
+    "homebridge": ">=2.0.0"
+  },
+  "license": "MIT"
+}

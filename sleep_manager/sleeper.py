@@ -1,10 +1,13 @@
 import datetime
 import logging
 import subprocess
+import threading
+import time
 from copy import deepcopy
 from typing import Any
 
-from flask import Blueprint, current_app
+import requests
+from flask import Blueprint, Flask, current_app
 
 from .core import ConfigurationError, SystemCommandError, require_api_key
 
@@ -259,3 +262,44 @@ def sleeper_url() -> str:
     except KeyError as e:
         missing_key = e.args[0] if e.args else "unknown"
         raise ConfigurationError(f"Missing configuration: {missing_key}") from e
+
+
+def _start_heartbeat_sender(app: Flask) -> threading.Thread:
+    """Start a daemon thread that periodically POSTs heartbeats to waker.
+
+    The thread runs for the lifetime of the application. Failures are logged
+    but retried on the next cycle.
+
+    Args:
+        app: The Flask application (used to access config inside the thread).
+
+    Returns:
+        The started daemon thread (for testing purposes).
+    """
+
+    def _run() -> None:
+        with app.app_context():
+            interval: float = float(app.config["COMMON"].get("heartbeat_interval", 60))
+            waker_name: str = app.config["WAKER"]["name"]
+            domain: str = app.config["COMMON"]["domain"]
+            port: int = app.config["COMMON"]["port"]
+            api_key: str = app.config["COMMON"]["api_key"]
+            url = f"http://{waker_name}.{domain}:{port}/waker/heartbeat"
+
+        logger.info("Heartbeat sender started: POSTing to %s every %.0fs", url, interval)
+
+        while True:
+            time.sleep(interval)
+            try:
+                resp = requests.post(
+                    url,
+                    headers={"X-API-Key": api_key},
+                    timeout=10,
+                )
+                logger.debug("Heartbeat sent, waker replied: %s", resp.json())
+            except Exception:
+                logger.warning("Heartbeat POST to %s failed (will retry next cycle)", url, exc_info=True)
+
+    t = threading.Thread(target=_run, daemon=True, name="heartbeat-sender")
+    t.start()
+    return t

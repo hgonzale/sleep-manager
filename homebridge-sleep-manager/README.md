@@ -1,23 +1,43 @@
-# Sleep Manager Homebridge Integration
+# homebridge-sleep-manager
 
-Integrate your sleep-manager system with HomeKit using the `homebridge-http-switch` plugin.
+Custom Homebridge plugin for sleep-manager. Requires Homebridge ≥ 2.0.
 
-## Quick Setup
+## Features
 
-1. **Install plugin**:
-   ```bash
-   npm install -g homebridge-http-switch
-   ```
+- **On/Off switch**: turns sleeper on (Wake-on-LAN) or off (suspend)
+- **StatusFault**: shows a warning icon in Apple Home when a wake attempt fails (state = `FAILED`)
+- **Polling**: calls `GET /waker/status` every 30s (configurable); no live probe to sleeper
 
-2. **Choose configuration**:
-   - `config.json` - Single toggle switch with status monitoring
-   - `config-separate-switches.json` - Separate wake/suspend switches
+## State → HomeKit mapping
 
-3. **Update configuration** in your Homebridge `config.json`:
-   - Replace `192.168.1.100` with your waker machine's IP
-   - Replace `your-waker-api-key-here` with your actual API key
+| State machine state | Switch.On | StatusFault    |
+|---------------------|-----------|----------------|
+| `ON`                | true      | NO_FAULT       |
+| `OFF`               | false     | NO_FAULT       |
+| `WAKING`            | false     | NO_FAULT       |
+| `FAILED`            | false     | GENERAL_FAULT  |
 
-4. **Restart Homebridge**
+## Installation
+
+Copy this directory into your Homebridge plugin path, or install locally:
+
+```bash
+npm install -g /path/to/homebridge-sleep-manager
+```
+
+## Homebridge config.json
+
+Add to the `accessories` array:
+
+```json
+{
+  "accessory": "SleepManagerSwitch",
+  "name": "My PC",
+  "waker_url": "http://waker_url:51339",
+  "api_key": "your-secure-api-key-here",
+  "poll_interval": 30
+}
+```
 
 ## API Endpoints Used
 
@@ -27,17 +47,7 @@ Integrate your sleep-manager system with HomeKit using the `homebridge-http-swit
 
 ## Troubleshooting
 
-**Test API manually**:
 ```bash
 curl -H "X-API-Key: your-api-key" http://waker_url:51339/waker/status
+# Expected: {"op": "status", "state": "OFF", "homekit": "off"}
 ```
-
-**Common issues**:
-- Check waker machine connectivity
-- Verify API key is correct
-- Check Homebridge logs for errors
-
-## Resources
-
-- [homebridge-http-switch](https://github.com/Supereg/homebridge-http-switch)
-- [sleep-manager Documentation](../README.md) 

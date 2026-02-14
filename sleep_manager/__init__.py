@@ -1,6 +1,8 @@
 import logging
 import os
 import socket
+import threading
+import time
 import tomllib
 from pathlib import Path
 from typing import Any, cast
@@ -8,7 +10,8 @@ from typing import Any, cast
 from flask import Flask, current_app
 
 from .core import ConfigurationError, SleepManagerError, check_command_availability, handle_error
-from .sleeper import sleeper_bp
+from .sleeper import _start_heartbeat_sender, sleeper_bp
+from .state_machine import SleeperStateMachine
 from .waker import waker_bp
 
 # Configure logging
@@ -153,8 +156,25 @@ def create_app() -> Flask:
     # Register role-specific blueprints with authentication
     if role == "waker":
         app.register_blueprint(waker_bp)
+        # Instantiate state machine and store in extensions
+        sm = SleeperStateMachine(
+            wake_timeout=float(common_config.get("wake_timeout", 120)),
+            heartbeat_interval=float(common_config.get("heartbeat_interval", 60)),
+            heartbeat_miss_threshold=int(common_config.get("heartbeat_miss_threshold", 3)),
+        )
+        app.extensions["state_machine"] = sm
+
+        # Background thread: check timeouts every 10s
+        def _timeout_checker() -> None:
+            while True:
+                time.sleep(10)
+                sm.check_timeouts()
+
+        t = threading.Thread(target=_timeout_checker, daemon=True, name="sm-timeout-checker")
+        t.start()
     else:
         app.register_blueprint(sleeper_bp)
+        _start_heartbeat_sender(app)
 
     @app.route("/")
     def welcome() -> str:
@@ -230,6 +250,14 @@ def create_app() -> Flask:
                             config_errors.append(f"Missing sleeper.{key}")
                 if "api_key" not in common:
                     config_errors.append("Missing common.api_key")
+                # New heartbeat / state-machine keys (optional with defaults, but warn if present and invalid)
+                for key in ["heartbeat_interval", "wake_timeout", "heartbeat_miss_threshold"]:
+                    val = common.get(key)
+                    if val is not None:
+                        try:
+                            float(val)
+                        except (TypeError, ValueError):
+                            config_errors.append(f"Invalid common.{key}: must be numeric")
 
             except Exception:
                 logger.exception("Configuration error during health check")

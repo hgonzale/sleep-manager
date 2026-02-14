@@ -1,3 +1,5 @@
+import threading
+import time
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -126,3 +128,53 @@ class TestSleeperConfiguration:
 
             url = sleeper_url()
             assert url == "http://test-sleeper.test.local:5000/sleeper"
+
+
+class TestHeartbeatSender:
+    """Test the heartbeat sender daemon thread."""
+
+    def test_heartbeat_sender_starts_on_sleeper_app_creation(self, make_config) -> None:
+        """Test that heartbeat sender thread is started when sleeper app is created."""
+        make_config("sleeper")
+        threads_before = {t.name for t in threading.enumerate()}
+        app = create_app()
+        app.config["TESTING"] = True
+        threads_after = {t.name for t in threading.enumerate()}
+        assert "heartbeat-sender" in threads_after
+
+    @patch("sleep_manager.sleeper.requests.post")
+    def test_heartbeat_sender_posts_to_waker(self, mock_post: MagicMock, make_config) -> None:
+        """Test that the heartbeat sender thread POSTs to the waker heartbeat endpoint."""
+        make_config("sleeper")
+
+        posted_urls: list[str] = []
+        event = threading.Event()
+
+        def fake_post(url, **kwargs):
+            posted_urls.append(url)
+            event.set()
+            resp = MagicMock()
+            resp.json.return_value = {"op": "heartbeat", "state": "ON"}
+            return resp
+
+        mock_post.side_effect = fake_post
+
+        # Patch time.sleep in sleeper to avoid real 60s wait
+        with patch("sleep_manager.sleeper.time.sleep", return_value=None):
+            from sleep_manager.sleeper import _start_heartbeat_sender
+            flask_app = Flask(__name__)
+            flask_app.config["TESTING"] = True
+            flask_app.config["COMMON"] = {
+                "heartbeat_interval": 60,
+                "domain": "test.local",
+                "port": 5000,
+                "api_key": "test-api-key",
+            }
+            flask_app.config["WAKER"] = {"name": "test-waker"}
+            flask_app.config["SLEEPER"] = {}
+
+            t = _start_heartbeat_sender(flask_app)
+            # Give the thread a moment to make the POST
+            event.wait(timeout=2.0)
+
+        assert any("heartbeat" in url for url in posted_urls), f"No heartbeat POST, got: {posted_urls}"

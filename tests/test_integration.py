@@ -57,34 +57,28 @@ class TestIntegration:
         assert response.status_code == 200
         assert "Welcome to sleep manager!" in response.get_data(as_text=True)
 
-    @patch("sleep_manager.waker.requests.get")
-    @patch("sleep_manager.sleeper.subprocess.run")
-    def test_waker_to_sleeper_communication(
+    def test_waker_status_uses_state_machine(
         self,
-        mock_sleeper_run: MagicMock,
-        mock_waker_get: MagicMock,
+        waker_app: Flask,
         waker_client: FlaskClient,
     ) -> None:
-        """Test waker communicating with sleeper."""
-        # Mock sleeper response
-        mock_sleeper_response = MagicMock()
-        mock_sleeper_response.status_code = 200
-        mock_sleeper_response.ok = True
-        mock_sleeper_response.json.return_value = {
-            "op": "status",
-            "status": "running",
-            "subprocess": {"returncode": 0, "stdout": "running"},
-        }
-        mock_sleeper_response.text = '{"op": "status", "status": "running"}'
-        mock_sleeper_response.url = "http://test-sleeper.test.local:5000/sleeper/status"
-        mock_waker_get.return_value = mock_sleeper_response
-
-        # Test waker status endpoint
+        """Test waker status endpoint returns state machine state (not proxied sleeper response)."""
+        # Initial state is OFF
         response = waker_client.get("/waker/status", headers={"X-API-Key": "test-api-key"})
         assert response.status_code == 200
         data = response.get_json()
         assert data["op"] == "status"
-        assert data["sleeper_response"]["status_code"] == 200
+        assert data["state"] == "OFF"
+        assert data["homekit"] == "off"
+
+        # Simulate a heartbeat arriving → ON
+        sm = waker_app.extensions["state_machine"]
+        sm.heartbeat_received()
+
+        response = waker_client.get("/waker/status", headers={"X-API-Key": "test-api-key"})
+        data = response.get_json()
+        assert data["state"] == "ON"
+        assert data["homekit"] == "on"
 
     def test_error_handling(self, sleeper_client: FlaskClient) -> None:
         """Test error handling for invalid endpoints."""

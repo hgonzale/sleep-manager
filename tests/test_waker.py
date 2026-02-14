@@ -6,6 +6,7 @@ from flask.testing import FlaskClient
 
 from sleep_manager import create_app
 from sleep_manager.core import ConfigurationError
+from sleep_manager.state_machine import SleeperState, SleeperStateMachine
 
 pytestmark = pytest.mark.unit
 
@@ -48,7 +49,7 @@ class TestWakerEndpoints:
 
     @patch("sleep_manager.waker.subprocess.run")
     def test_wake_endpoint_success(self, mock_run: MagicMock, client: FlaskClient) -> None:
-        """Test wake endpoint with valid API key."""
+        """Test wake endpoint with valid API key transitions state machine to WAKING."""
         mock_result = MagicMock()
         mock_result.returncode = 0
         mock_result.stdout = ""
@@ -61,6 +62,26 @@ class TestWakerEndpoints:
         data = response.get_json()
         assert data["op"] == "wake"
         assert data["sleeper"]["mac_address"] == "00:11:22:33:44:55"
+        # State machine should be WAKING after wake
+        assert data["state"] == "WAKING"
+
+    @patch("sleep_manager.waker.subprocess.run")
+    def test_wake_calls_state_machine_wake_requested(
+        self, mock_run: MagicMock, app: Flask, client: FlaskClient
+    ) -> None:
+        """Test wake() calls wake_requested() on state machine."""
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+        mock_result.stdout = ""
+        mock_result.stderr = ""
+        mock_result.args = []
+        mock_run.return_value = mock_result
+
+        sm = app.extensions["state_machine"]
+        assert sm.get_state() == SleeperState.OFF
+
+        client.get("/waker/wake", headers={"X-API-Key": "test-api-key"})
+        assert sm.get_state() == SleeperState.WAKING
 
     @patch("sleep_manager.waker.subprocess.run")
     def test_wake_endpoint_failure(self, mock_run: MagicMock, client: FlaskClient) -> None:
@@ -89,21 +110,68 @@ class TestWakerEndpoints:
         data = response.get_json()
         assert data["op"] == "suspend"
 
-    @patch("sleep_manager.waker.sleeper_request")
-    def test_status_endpoint_success(self, mock_sleeper_request: MagicMock, client: FlaskClient) -> None:
-        """Test status endpoint with valid API key."""
-        mock_sleeper_request.return_value = {
-            "op": "status",
-            "sleeper_response": {
-                "status_code": 200,
-                "json": {"op": "status", "status": "running"},
-            },
-        }
-
+    def test_status_returns_state_machine_state(self, app: Flask, client: FlaskClient) -> None:
+        """Test status endpoint returns state machine state, not proxied sleeper response."""
         response = client.get("/waker/status", headers={"X-API-Key": "test-api-key"})
         assert response.status_code == 200
         data = response.get_json()
         assert data["op"] == "status"
+        assert "state" in data
+        assert "homekit" in data
+        # Initial state is OFF
+        assert data["state"] == "OFF"
+        assert data["homekit"] == "off"
+
+    def test_status_on_state(self, app: Flask, client: FlaskClient) -> None:
+        """Test status returns on/homekit=on when state machine is ON."""
+        sm = app.extensions["state_machine"]
+        sm.heartbeat_received()  # OFF -> ON
+
+        response = client.get("/waker/status", headers={"X-API-Key": "test-api-key"})
+        data = response.get_json()
+        assert data["state"] == "ON"
+        assert data["homekit"] == "on"
+
+    def test_status_failed_state(self, app: Flask, client: FlaskClient) -> None:
+        """Test status returns failed/homekit=failed when state machine is FAILED."""
+        sm = app.extensions["state_machine"]
+        # Force FAILED state by manipulating internal state directly
+        from sleep_manager.state_machine import SleeperState
+        with sm._lock:
+            sm.state = SleeperState.FAILED
+
+        response = client.get("/waker/status", headers={"X-API-Key": "test-api-key"})
+        data = response.get_json()
+        assert data["state"] == "FAILED"
+        assert data["homekit"] == "failed"
+
+    def test_heartbeat_endpoint_without_api_key(self, client: FlaskClient) -> None:
+        """Test heartbeat endpoint without API key returns 401."""
+        response = client.post("/waker/heartbeat")
+        assert response.status_code == 401
+
+    def test_heartbeat_endpoint_transitions_state(self, app: Flask, client: FlaskClient) -> None:
+        """Test POST /waker/heartbeat transitions state machine and returns state."""
+        sm = app.extensions["state_machine"]
+        assert sm.get_state() == SleeperState.OFF
+
+        response = client.post("/waker/heartbeat", headers={"X-API-Key": "test-api-key"})
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["op"] == "heartbeat"
+        assert data["state"] == "ON"
+        assert sm.get_state() == SleeperState.ON
+
+    def test_heartbeat_endpoint_waking_to_on(self, app: Flask, client: FlaskClient) -> None:
+        """Test heartbeat received while WAKING transitions to ON."""
+        sm = app.extensions["state_machine"]
+        sm.wake_requested()  # OFF -> WAKING
+        assert sm.get_state() == SleeperState.WAKING
+
+        response = client.post("/waker/heartbeat", headers={"X-API-Key": "test-api-key"})
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["state"] == "ON"
 
 
 class TestWakerConfiguration:
