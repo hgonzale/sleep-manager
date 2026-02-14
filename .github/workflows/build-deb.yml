@@ -96,7 +96,7 @@ jobs:
           echo "npm $*" >> /tmp/npm-calls.log
           exit 0
           SH
-          sudo chmod +x /opt/homebridge/bin/node /opt/homebridge/bin/npm
+          sudo chmod +x /opt/homebridge/bin/homebridge /opt/homebridge/bin/node /opt/homebridge/bin/npm
           # Reinstall — postinst should now find /opt/homebridge/bin/npm
           sudo UCF_FORCE_CONFFNEW=1 DEBIAN_FRONTEND=noninteractive apt-get install -y --reinstall ./dist/deb/*.deb
           # Assert npm was invoked with install -g pointing at the bundled plugin
