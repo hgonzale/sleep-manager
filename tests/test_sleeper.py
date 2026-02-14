@@ -140,6 +140,25 @@ class TestHeartbeatSender:
         threads_after = {t.name for t in threading.enumerate()}
         assert "heartbeat-sender" in threads_after
 
+    def _make_heartbeat_app(self) -> Flask:
+        """Build a minimal Flask app with config_checksum extension for heartbeat tests."""
+        from sleep_manager.config_checksum import compute_config_checksum
+
+        flask_app = Flask(__name__)
+        flask_app.config["TESTING"] = True
+        flask_app.config["COMMON"] = {
+            "heartbeat_interval": 60,
+            "domain": "test.local",
+            "port": 5000,
+            "api_key": "test-api-key",
+        }
+        flask_app.config["WAKER"] = {"name": "test-waker"}
+        flask_app.config["SLEEPER"] = {}
+        flask_app.extensions["config_checksum"] = compute_config_checksum(
+            flask_app.config["COMMON"], flask_app.config["WAKER"], flask_app.config["SLEEPER"]
+        )
+        return flask_app
+
     @patch("sleep_manager.sleeper.requests.post")
     def test_heartbeat_sender_posts_to_waker(self, mock_post: MagicMock, make_config) -> None:
         """Test that the heartbeat sender thread POSTs to the waker heartbeat endpoint."""
@@ -152,7 +171,7 @@ class TestHeartbeatSender:
             posted_urls.append(url)
             event.set()
             resp = MagicMock()
-            resp.json.return_value = {"op": "heartbeat", "state": "ON"}
+            resp.json.return_value = {"op": "heartbeat", "state": "ON", "config_compatible": True}
             return resp
 
         mock_post.side_effect = fake_post
@@ -160,19 +179,93 @@ class TestHeartbeatSender:
         # Patch time.sleep in sleeper to avoid real 60s wait
         with patch("sleep_manager.sleeper.time.sleep", return_value=None):
             from sleep_manager.sleeper import _start_heartbeat_sender
-            flask_app = Flask(__name__)
-            flask_app.config["TESTING"] = True
-            flask_app.config["COMMON"] = {
-                "heartbeat_interval": 60,
-                "domain": "test.local",
-                "port": 5000,
-                "api_key": "test-api-key",
-            }
-            flask_app.config["WAKER"] = {"name": "test-waker"}
-            flask_app.config["SLEEPER"] = {}
+            flask_app = self._make_heartbeat_app()
 
             _start_heartbeat_sender(flask_app)
             # Give the thread a moment to make the POST
             event.wait(timeout=2.0)
 
         assert any("heartbeat" in url for url in posted_urls), f"No heartbeat POST, got: {posted_urls}"
+
+    @patch("sleep_manager.sleeper.requests.post")
+    def test_heartbeat_sender_includes_checksum(self, mock_post: MagicMock, make_config) -> None:
+        """Test that the heartbeat sender POSTs a body containing 'checksum' key."""
+        make_config("sleeper")
+
+        posted_jsons: list[dict] = []
+        event = threading.Event()
+
+        def fake_post(url, **kwargs):
+            posted_jsons.append(kwargs.get("json", {}))
+            event.set()
+            resp = MagicMock()
+            resp.json.return_value = {"op": "heartbeat", "state": "ON", "config_compatible": True}
+            return resp
+
+        mock_post.side_effect = fake_post
+
+        with patch("sleep_manager.sleeper.time.sleep", return_value=None):
+            from sleep_manager.sleeper import _start_heartbeat_sender
+            flask_app = self._make_heartbeat_app()
+            expected_checksum = flask_app.extensions["config_checksum"]
+
+            _start_heartbeat_sender(flask_app)
+            event.wait(timeout=2.0)
+
+        assert posted_jsons, "No POST was made"
+        assert "checksum" in posted_jsons[0], f"No checksum in body: {posted_jsons[0]}"
+        assert posted_jsons[0]["checksum"] == expected_checksum
+
+    @patch("sleep_manager.sleeper.requests.post")
+    def test_heartbeat_sender_logs_error_on_mismatch(
+        self, mock_post: MagicMock, make_config
+    ) -> None:
+        """Test that heartbeat sender logs an error when waker reports config_compatible: false."""
+        import logging
+        make_config("sleeper")
+
+        event = threading.Event()
+        log_messages: list[str] = []
+
+        class _Capture(logging.Handler):
+            def emit(self, record):
+                log_messages.append(self.format(record))
+
+        handler = _Capture()
+        sleeper_logger = logging.getLogger("sleep_manager.sleeper")
+        sleeper_logger.addHandler(handler)
+
+        def fake_post(url, **kwargs):
+            event.set()
+            resp = MagicMock()
+            resp.json.return_value = {
+                "op": "heartbeat",
+                "state": "ON",
+                "config_compatible": False,
+                "waker_checksum": "abcd1234abcd1234",
+            }
+            return resp
+
+        mock_post.side_effect = fake_post
+
+        try:
+            with patch("sleep_manager.sleeper.time.sleep", return_value=None):
+                from sleep_manager.sleeper import _start_heartbeat_sender
+                flask_app = self._make_heartbeat_app()
+
+                _start_heartbeat_sender(flask_app)
+                event.wait(timeout=2.0)
+        finally:
+            sleeper_logger.removeHandler(handler)
+
+        assert any("Config mismatch" in m for m in log_messages), (
+            f"Expected config mismatch error log, got: {log_messages}"
+        )
+
+    def test_config_includes_config_checksum(self, client: FlaskClient) -> None:
+        """GET /sleeper/config includes config_checksum field."""
+        response = client.get("/sleeper/config", headers={"X-API-Key": "test-api-key"})
+        assert response.status_code == 200
+        data = response.get_json()
+        assert "config_checksum" in data
+        assert len(data["config_checksum"]) == 16

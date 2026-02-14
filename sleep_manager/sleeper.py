@@ -41,7 +41,9 @@ def print_config() -> dict[str, Any]:
     if isinstance(common, dict) and "api_key" in common:
         common["api_key"] = "***hidden***"
     # Recursively sanitize
-    return sanitize(config)  # type: ignore
+    result = sanitize(config)  # type: ignore
+    result["config_checksum"] = current_app.extensions["config_checksum"]
+    return result
 
 
 @sleeper_bp.get("/suspend")
@@ -284,6 +286,7 @@ def _start_heartbeat_sender(app: Flask) -> threading.Thread:
             domain: str = app.config["COMMON"]["domain"]
             port: int = app.config["COMMON"]["port"]
             api_key: str = app.config["COMMON"]["api_key"]
+            checksum: str = app.extensions["config_checksum"]
             url = f"http://{waker_name}.{domain}:{port}/waker/heartbeat"
 
         logger.info("Heartbeat sender started: POSTing to %s every %.0fs", url, interval)
@@ -294,9 +297,20 @@ def _start_heartbeat_sender(app: Flask) -> threading.Thread:
                 resp = requests.post(
                     url,
                     headers={"X-API-Key": api_key},
+                    json={"checksum": checksum},
                     timeout=10,
                 )
-                logger.debug("Heartbeat sent, waker replied: %s", resp.json())
+                resp_data = resp.json()
+                if resp_data.get("config_compatible") is False:
+                    waker_checksum = resp_data.get("waker_checksum", "unknown")
+                    logger.error(
+                        "Config mismatch: waker and sleeper configs differ. "
+                        "Waker checksum: %s, ours: %s",
+                        waker_checksum,
+                        checksum,
+                    )
+                else:
+                    logger.debug("Heartbeat sent, waker replied: %s", resp_data)
             except Exception:
                 logger.warning("Heartbeat POST to %s failed (will retry next cycle)", url, exc_info=True)
 

@@ -173,6 +173,71 @@ class TestWakerEndpoints:
         data = response.get_json()
         assert data["state"] == "ON"
 
+    def test_heartbeat_with_matching_checksum(self, app: Flask, client: FlaskClient) -> None:
+        """Heartbeat with matching checksum returns config_compatible: true."""
+        checksum = app.extensions["config_checksum"]
+        response = client.post(
+            "/waker/heartbeat",
+            headers={"X-API-Key": "test-api-key"},
+            json={"checksum": checksum},
+        )
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["config_compatible"] is True
+        assert app.extensions["config_compat"] is True
+
+    def test_heartbeat_with_mismatched_checksum(self, app: Flask, client: FlaskClient) -> None:
+        """Heartbeat with wrong checksum returns config_compatible: false and waker_checksum."""
+        response = client.post(
+            "/waker/heartbeat",
+            headers={"X-API-Key": "test-api-key"},
+            json={"checksum": "0000000000000000"},
+        )
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["config_compatible"] is False
+        assert "waker_checksum" in data
+        assert app.extensions["config_compat"] is False
+
+    def test_heartbeat_with_no_body(self, app: Flask, client: FlaskClient) -> None:
+        """Heartbeat with no body treats missing checksum as mismatch."""
+        response = client.post("/waker/heartbeat", headers={"X-API-Key": "test-api-key"})
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["config_compatible"] is False
+        assert "waker_checksum" in data
+
+    def test_status_includes_config_compatible_null_initially(
+        self, app: Flask, client: FlaskClient
+    ) -> None:
+        """GET /waker/status includes config_compatible field (null before any heartbeat)."""
+        response = client.get("/waker/status", headers={"X-API-Key": "test-api-key"})
+        data = response.get_json()
+        assert "config_compatible" in data
+        assert data["config_compatible"] is None
+
+    def test_status_config_compatible_reflects_heartbeat(
+        self, app: Flask, client: FlaskClient
+    ) -> None:
+        """GET /waker/status config_compatible reflects last heartbeat result."""
+        checksum = app.extensions["config_checksum"]
+        client.post(
+            "/waker/heartbeat",
+            headers={"X-API-Key": "test-api-key"},
+            json={"checksum": checksum},
+        )
+        response = client.get("/waker/status", headers={"X-API-Key": "test-api-key"})
+        data = response.get_json()
+        assert data["config_compatible"] is True
+
+    def test_config_includes_config_checksum(self, client: FlaskClient) -> None:
+        """GET /waker/config includes config_checksum field."""
+        response = client.get("/waker/config", headers={"X-API-Key": "test-api-key"})
+        assert response.status_code == 200
+        data = response.get_json()
+        assert "config_checksum" in data
+        assert len(data["config_checksum"]) == 16
+
 
 class TestWakerConfiguration:
     """Test waker configuration handling."""

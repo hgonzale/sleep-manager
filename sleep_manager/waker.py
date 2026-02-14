@@ -3,7 +3,7 @@ import subprocess
 from typing import Any
 
 import requests
-from flask import Blueprint, current_app
+from flask import Blueprint, current_app, request
 
 from .core import ConfigurationError, SystemCommandError, require_api_key
 from .sleeper import sleeper_url
@@ -69,7 +69,9 @@ def print_config() -> dict[str, Any]:
                 "wol_exec": "/usr/sbin/etherwake"
             }
     """
-    return dict(current_app.config["WAKER"])
+    result = dict(current_app.config["WAKER"])
+    result["config_checksum"] = current_app.extensions["config_checksum"]
+    return result
 
 
 @waker_bp.get("/wake")
@@ -239,6 +241,7 @@ def status() -> dict[str, Any]:
         "op": "status",
         "state": state.value,
         "homekit": _homekit_value(state.value),
+        "config_compatible": current_app.extensions.get("config_compat"),
     }
 
 
@@ -270,7 +273,27 @@ def heartbeat() -> dict[str, Any]:
     sm = _get_state_machine()
     new_state = sm.heartbeat_received()
     logger.info("Heartbeat received, state=%s", new_state.value)
-    return {"op": "heartbeat", "state": new_state.value}
+
+    waker_checksum: str = current_app.extensions["config_checksum"]
+    body = request.get_json(silent=True) or {}
+    sleeper_checksum = body.get("checksum")
+
+    if sleeper_checksum == waker_checksum:
+        current_app.extensions["config_compat"] = True
+        return {"op": "heartbeat", "state": new_state.value, "config_compatible": True}
+    else:
+        logger.error(
+            "Config checksum mismatch: waker=%s, sleeper=%s",
+            waker_checksum,
+            sleeper_checksum,
+        )
+        current_app.extensions["config_compat"] = False
+        return {
+            "op": "heartbeat",
+            "state": new_state.value,
+            "config_compatible": False,
+            "waker_checksum": waker_checksum,
+        }
 
 
 def waker_url() -> str:

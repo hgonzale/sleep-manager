@@ -9,6 +9,7 @@ from typing import Any, cast
 
 from flask import Flask, current_app
 
+from .config_checksum import compute_config_checksum
 from .core import ConfigurationError, SleepManagerError, check_command_availability, handle_error
 from .sleeper import _start_heartbeat_sender, sleeper_bp
 from .state_machine import SleeperStateMachine
@@ -148,6 +149,11 @@ def create_app() -> Flask:
 
     role = _resolve_role(common_config, waker_config, sleeper_config)
     logger.info("Loaded config for role=%s", role)
+
+    app.extensions["config_checksum"] = compute_config_checksum(
+        common_config, waker_config, sleeper_config
+    )
+    app.extensions["config_compat"] = None
 
     # Register error handlers
     app.register_error_handler(SleepManagerError, handle_error)
