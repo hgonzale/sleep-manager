@@ -21,7 +21,7 @@ override_dh_auto_install:
 	  --exclude 'build' \
 	  --exclude 'config' \
 	  --exclude 'docs' \
-	  --exclude 'homebridge-sleep-manager' \
+	  --exclude '.claude' \
 	  --exclude 'systemd' \
 	  --exclude 'tests' \
 	  --exclude 'tox.ini' \

@@ -150,6 +150,13 @@ chown -R sleep-manager:sleep-manager /usr/lib/sleep-manager/venv
 /usr/lib/sleep-manager/venv/bin/pip install --upgrade hatchling hatch-vcs
 /usr/lib/sleep-manager/venv/bin/pip install --upgrade --no-build-isolation /usr/lib/sleep-manager
 
+# Install Homebridge plugin if npm is available (Homebridge is optional)
+plugin_src="/usr/lib/sleep-manager/homebridge-sleep-manager"
+if [ -d "$plugin_src" ] && command -v npm >/dev/null 2>&1; then
+    echo "Installing homebridge-sleep-manager plugin..."
+    npm install -g "$plugin_src" || echo "WARNING: Failed to install homebridge-sleep-manager; install manually with: npm install -g $plugin_src"
+fi
+
 if [ "$needs_reenable" -eq 1 ]; then
     systemctl daemon-reload >/dev/null 2>&1 || true
     for unit in sleep-manager.service sleep-manager-delay.service; do
