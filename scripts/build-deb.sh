@@ -28,6 +28,14 @@ fi
 
 mkdir -p "$PROJECT_DIR/dist/deb"
 
+# Patch homebridge plugin version to match the package version (x.y.z only)
+plugin_pkg="$PROJECT_DIR/homebridge-sleep-manager/package.json"
+semver="${version%%[^0-9.]*}"  # strip dev/dirty suffix, keep x.y.z
+plugin_pkg_orig=$(cat "$plugin_pkg")
+cleanup_plugin_pkg() { echo "$plugin_pkg_orig" > "$plugin_pkg"; }
+trap cleanup_plugin_pkg EXIT
+sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$semver\"/" "$plugin_pkg"
+
 changelog_date=$(date -R)
 cat > "$PROJECT_DIR/debian/changelog" <<EOF_CHANGELOG
 sleep-manager (${version}) unstable; urgency=medium

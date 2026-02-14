@@ -159,9 +159,11 @@ elif [ -x /opt/homebridge/bin/npm ] && [ -x /opt/homebridge/bin/node ]; then
     npm_bin="/opt/homebridge/bin/npm"
     export PATH="/opt/homebridge/bin:$PATH"
 fi
+hb_storage="/var/lib/homebridge"
 if [ -d "$plugin_src" ] && [ -n "$npm_bin" ]; then
     echo "Installing homebridge-sleep-manager plugin..."
-    "$npm_bin" install -g "$plugin_src" || echo "WARNING: Failed to install homebridge-sleep-manager; install manually with: $npm_bin install -g $plugin_src"
+    "$npm_bin" install --prefix "$hb_storage" "$plugin_src" \
+        || echo "WARNING: Failed to install homebridge-sleep-manager; install manually with: $npm_bin install --prefix $hb_storage $plugin_src"
 fi
 
 if [ "$needs_reenable" -eq 1 ]; then
