@@ -272,7 +272,7 @@ def heartbeat() -> dict[str, Any]:
     """
     sm = _get_state_machine()
     new_state = sm.heartbeat_received()
-    logger.info("Heartbeat received, state=%s", new_state.value)
+    logger.debug("Heartbeat received, state=%s", new_state.value)
 
     waker_checksum: str = current_app.extensions["config_checksum"]
     body = request.get_json(silent=True) or {}
@@ -335,7 +335,7 @@ def sleeper_request(endpoint: str) -> dict[str, Any]:
         url = sleeper_url()
         # max value 3.05 is slightly larger than 3 (TCP response window)
         request_timeout = max(current_app.config["COMMON"]["default_request_timeout"], 3.05)
-        logger.info(f"Making request to sleeper at {url}/{endpoint}")
+        logger.debug("Making request to sleeper at %s/%s", url, endpoint)
 
         _res: requests.Response = requests.get(
             f"{url}/{endpoint}",
@@ -365,7 +365,7 @@ def sleeper_request(endpoint: str) -> dict[str, Any]:
         else:
             _json = _res.json()
 
-        logger.info(f"Successfully received response from sleeper for {endpoint}")
+        logger.debug("Successfully received response from sleeper for %s", endpoint)
         return {
             "op": endpoint,
             "sleeper_response": {
