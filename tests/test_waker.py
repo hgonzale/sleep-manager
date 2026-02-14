@@ -6,7 +6,7 @@ from flask.testing import FlaskClient
 
 from sleep_manager import create_app
 from sleep_manager.core import ConfigurationError
-from sleep_manager.state_machine import SleeperState, SleeperStateMachine
+from sleep_manager.state_machine import SleeperState
 
 pytestmark = pytest.mark.unit
 

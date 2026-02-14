@@ -57,5 +57,4 @@ def state_machine():
         heartbeat_miss_threshold=3,
         _time_fn=lambda: clock[0],
     )
-    sm._clock = clock  # expose clock for tests that need to advance time
     return sm

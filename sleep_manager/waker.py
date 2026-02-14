@@ -3,7 +3,7 @@ import subprocess
 from typing import Any
 
 import requests
-from flask import Blueprint, current_app, request
+from flask import Blueprint, current_app
 
 from .core import ConfigurationError, SystemCommandError, require_api_key
 from .sleeper import sleeper_url

@@ -1,5 +1,4 @@
 import threading
-import time
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -136,7 +135,6 @@ class TestHeartbeatSender:
     def test_heartbeat_sender_starts_on_sleeper_app_creation(self, make_config) -> None:
         """Test that heartbeat sender thread is started when sleeper app is created."""
         make_config("sleeper")
-        threads_before = {t.name for t in threading.enumerate()}
         app = create_app()
         app.config["TESTING"] = True
         threads_after = {t.name for t in threading.enumerate()}
@@ -173,7 +171,7 @@ class TestHeartbeatSender:
             flask_app.config["WAKER"] = {"name": "test-waker"}
             flask_app.config["SLEEPER"] = {}
 
-            t = _start_heartbeat_sender(flask_app)
+            _start_heartbeat_sender(flask_app)
             # Give the thread a moment to make the POST
             event.wait(timeout=2.0)
 

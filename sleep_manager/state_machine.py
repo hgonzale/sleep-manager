@@ -69,7 +69,6 @@ class SleeperStateMachine:
         """Process an incoming heartbeat from the sleeper."""
         with self._lock:
             now = self._time()
-            prev = self.state
             self.last_heartbeat_at = now
             if self.state in (SleeperState.WAKING, SleeperState.OFF, SleeperState.FAILED):
                 logger.info("State: %s -> ON (heartbeat received)", self.state.value)
@@ -95,16 +94,15 @@ class SleeperStateMachine:
                     self.state = SleeperState.FAILED
                     self.wake_requested_at = None
 
-            elif self.state == SleeperState.ON:
-                if self.last_heartbeat_at is not None:
-                    missed_window = self.heartbeat_interval * self.heartbeat_miss_threshold
-                    if (now - self.last_heartbeat_at) > missed_window:
-                        logger.info(
-                            "State: ON -> OFF (heartbeat_missed: no heartbeat for %.0fs)",
-                            now - self.last_heartbeat_at,
-                        )
-                        self.state = SleeperState.OFF
-                        self.last_heartbeat_at = None
+            elif self.state == SleeperState.ON and self.last_heartbeat_at is not None:
+                missed_window = self.heartbeat_interval * self.heartbeat_miss_threshold
+                if (now - self.last_heartbeat_at) > missed_window:
+                    logger.info(
+                        "State: ON -> OFF (heartbeat_missed: no heartbeat for %.0fs)",
+                        now - self.last_heartbeat_at,
+                    )
+                    self.state = SleeperState.OFF
+                    self.last_heartbeat_at = None
 
             return self.state
 
