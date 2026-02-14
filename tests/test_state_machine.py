@@ -47,6 +47,7 @@ class TestInitialState:
         assert d["state"] == "OFF"
         assert d["last_heartbeat_at"] is None
         assert d["wake_requested_at"] is None
+        assert d["suspend_requested_at"] is None
 
 
 # ---------------------------------------------------------------------------
@@ -186,7 +187,7 @@ class TestCheckTimeouts:
 
 
 # ---------------------------------------------------------------------------
-# suspend_requested — no state change
+# suspend_requested — inhibit window
 # ---------------------------------------------------------------------------
 
 class TestSuspendRequested:
@@ -198,6 +199,49 @@ class TestSuspendRequested:
         sm, _ = make_sm()
         sm.heartbeat_received()
         assert sm.suspend_requested() == SleeperState.ON
+
+    def test_records_timestamp(self):
+        sm, clock = make_sm(now=500.0)
+        sm.heartbeat_received()
+        sm.suspend_requested()
+        assert sm.suspend_requested_at == 500.0
+
+    def test_heartbeat_suppressed_within_window(self):
+        sm, clock = make_sm(heartbeat_interval=60.0, now=0.0)
+        sm.heartbeat_received()   # ON, last_heartbeat_at=0.0
+        sm.suspend_requested()    # records suspend_requested_at=0.0
+        clock[0] = 119.9          # within 2 * 60s window
+        assert sm.heartbeat_received() == SleeperState.ON
+        # last_heartbeat_at must NOT have advanced — timeout clock is still ticking
+        assert sm.last_heartbeat_at == 0.0
+
+    def test_heartbeat_allowed_after_window(self):
+        sm, clock = make_sm(heartbeat_interval=60.0, now=0.0)
+        sm.heartbeat_received()
+        sm.suspend_requested()
+        clock[0] = 120.0          # exactly at window boundary — no longer suppressed
+        assert sm.heartbeat_received() == SleeperState.ON
+        assert sm.last_heartbeat_at == 120.0
+        assert sm.suspend_requested_at is None
+
+    def test_timeout_fires_while_inhibit_active(self):
+        # Sleeper actually suspends: heartbeats stop → ON→OFF via timeout
+        sm, clock = make_sm(heartbeat_interval=60.0, heartbeat_miss_threshold=3, now=0.0)
+        sm.heartbeat_received()   # last_heartbeat_at=0.0
+        sm.suspend_requested()
+        clock[0] = 181.0          # past miss threshold (3*60)
+        assert sm.check_timeouts() == SleeperState.OFF
+
+    def test_wake_requested_clears_inhibit(self):
+        sm, clock = make_sm(heartbeat_interval=60.0, now=0.0)
+        sm.heartbeat_received()
+        sm.suspend_requested()
+        clock[0] = 10.0           # still within window
+        sm.wake_requested()       # user clicks on again
+        assert sm.suspend_requested_at is None
+        # heartbeat should now be processed normally
+        assert sm.heartbeat_received() == SleeperState.ON
+        assert sm.last_heartbeat_at == 10.0
 
 
 # ---------------------------------------------------------------------------

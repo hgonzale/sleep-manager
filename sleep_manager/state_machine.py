@@ -41,11 +41,13 @@ class SleeperStateMachine:
         self.state: SleeperState = SleeperState.OFF
         self.last_heartbeat_at: float | None = None
         self.wake_requested_at: float | None = None
+        self.suspend_requested_at: float | None = None
         self._lock = threading.Lock()
 
     def wake_requested(self) -> SleeperState:
         """Transition: wake command issued (WoL packet sent)."""
         with self._lock:
+            self.suspend_requested_at = None  # clear any suspend inhibit window
             if self.state in (SleeperState.OFF, SleeperState.FAILED):
                 logger.info("State: %s -> WAKING (wake requested)", self.state.value)
                 self.state = SleeperState.WAKING
@@ -58,10 +60,13 @@ class SleeperStateMachine:
             return self.state
 
     def suspend_requested(self) -> SleeperState:
-        """Log suspend intent; no state change (state transitions via heartbeat_missed)."""
+        """Record suspend intent; inhibit heartbeats for 2 intervals to prevent bounce-back."""
         with self._lock:
+            self.suspend_requested_at = self._time()
             logger.info(
-                "Suspend requested in state %s — waiting for heartbeats to stop", self.state.value
+                "Suspend requested in state %s — inhibiting heartbeats for %.0fs",
+                self.state.value,
+                2 * self.heartbeat_interval,
             )
             return self.state
 
@@ -69,6 +74,13 @@ class SleeperStateMachine:
         """Process an incoming heartbeat from the sleeper."""
         with self._lock:
             now = self._time()
+            if (
+                self.suspend_requested_at is not None
+                and (now - self.suspend_requested_at) < 2 * self.heartbeat_interval
+            ):
+                logger.debug("Heartbeat suppressed (suspend inhibit window active)")
+                return self.state
+            self.suspend_requested_at = None
             self.last_heartbeat_at = now
             if self.state in (SleeperState.WAKING, SleeperState.OFF, SleeperState.FAILED):
                 logger.info("State: %s -> ON (heartbeat received)", self.state.value)
@@ -116,4 +128,5 @@ class SleeperStateMachine:
                 "state": self.state.value,
                 "last_heartbeat_at": self.last_heartbeat_at,
                 "wake_requested_at": self.wake_requested_at,
+                "suspend_requested_at": self.suspend_requested_at,
             }
