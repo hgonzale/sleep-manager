@@ -78,6 +78,31 @@ jobs:
           sudo UCF_FORCE_CONFFNEW=1 DEBIAN_FRONTEND=noninteractive apt-get install -y --reinstall ./dist/deb/*.deb
           assert_config "toml migration"
 
+      - name: Postinst smoke test — Homebridge npm path
+        run: |
+          set -euo pipefail
+          # Simulate the /opt/homebridge layout: node + npm present but not in PATH
+          sudo mkdir -p /opt/homebridge/bin
+          sudo tee /opt/homebridge/bin/node >/dev/null <<'SH'
+          #!/bin/sh
+          exec "$@"
+          SH
+          sudo tee /opt/homebridge/bin/npm >/dev/null <<'SH'
+          #!/bin/sh
+          echo "npm $*" >> /tmp/npm-calls.log
+          exit 0
+          SH
+          sudo chmod +x /opt/homebridge/bin/node /opt/homebridge/bin/npm
+          # Reinstall — postinst should now find /opt/homebridge/bin/npm
+          sudo UCF_FORCE_CONFFNEW=1 DEBIAN_FRONTEND=noninteractive apt-get install -y --reinstall ./dist/deb/*.deb
+          # Assert npm was invoked with install -g pointing at the bundled plugin
+          if ! grep -q 'npm install -g.*/homebridge-sleep-manager' /tmp/npm-calls.log 2>/dev/null; then
+            echo "ERROR: expected npm install -g call not found in /tmp/npm-calls.log"
+            cat /tmp/npm-calls.log || echo "(log missing)"
+            exit 1
+          fi
+          echo "OK: npm was called: $(cat /tmp/npm-calls.log)"
+
       - name: Upload .deb artifact
         uses: actions/upload-artifact@v4
         with:

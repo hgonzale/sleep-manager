@@ -152,9 +152,16 @@ chown -R sleep-manager:sleep-manager /usr/lib/sleep-manager/venv
 
 # Install Homebridge plugin if npm is available (Homebridge is optional)
 plugin_src="/usr/lib/sleep-manager/homebridge-sleep-manager"
-if [ -d "$plugin_src" ] && command -v npm >/dev/null 2>&1; then
+npm_bin=""
+if command -v npm >/dev/null 2>&1; then
+    npm_bin="npm"
+elif [ -x /opt/homebridge/bin/npm ] && [ -x /opt/homebridge/bin/node ]; then
+    npm_bin="/opt/homebridge/bin/npm"
+    export PATH="/opt/homebridge/bin:$PATH"
+fi
+if [ -d "$plugin_src" ] && [ -n "$npm_bin" ]; then
     echo "Installing homebridge-sleep-manager plugin..."
-    npm install -g "$plugin_src" || echo "WARNING: Failed to install homebridge-sleep-manager; install manually with: npm install -g $plugin_src"
+    "$npm_bin" install -g "$plugin_src" || echo "WARNING: Failed to install homebridge-sleep-manager; install manually with: $npm_bin install -g $plugin_src"
 fi
 
 if [ "$needs_reenable" -eq 1 ]; then
