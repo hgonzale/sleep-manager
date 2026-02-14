@@ -83,6 +83,10 @@ jobs:
           set -euo pipefail
           # Simulate the /opt/homebridge layout: node + npm present but not in PATH
           sudo mkdir -p /opt/homebridge/bin
+          sudo tee /opt/homebridge/bin/homebridge >/dev/null <<'SH'
+          #!/bin/sh
+          exit 0
+          SH
           sudo tee /opt/homebridge/bin/node >/dev/null <<'SH'
           #!/bin/sh
           exec "$@"
