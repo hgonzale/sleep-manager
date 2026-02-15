@@ -23,6 +23,10 @@ Example configuration
    port = 51339
    default_request_timeout = 4
    api_key = "your-secure-api-key-here"
+   # Optional heartbeat/timeout settings (defaults shown):
+   heartbeat_interval = 60
+   wake_timeout = 120
+   heartbeat_miss_threshold = 3
 
    [waker]
    # Only needed on the waker machine.
