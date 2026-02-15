@@ -11,6 +11,7 @@ A Flask-based application for managing sleep/wake cycles between two machines on
    configuration
    operations
    troubleshooting
+   homebridge
    api/index
 
 Indices and tables
