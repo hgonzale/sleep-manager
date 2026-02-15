@@ -27,25 +27,24 @@ Debian Package Installation
 
 Download the latest `.deb` from GitHub Releases and install it:
 
-1. **Install the package**:
-   .. code-block:: bash
+.. code-block:: bash
 
-      sudo dpkg -i sleep-manager_*.deb
+   sudo dpkg -i sleep-manager_*.deb
 
-2. **Configure the application**:
-   .. code-block:: bash
+Edit the config file:
 
-      sudo nano /etc/sleep-manager/sleep-manager-config.toml
+.. code-block:: bash
 
-3. **Start the service**:
-   .. code-block:: bash
+   sudo nano /etc/sleep-manager/sleep-manager-config.toml
 
-      sudo systemctl start sleep-manager
-      sudo systemctl enable sleep-manager
-      # Both machines can use the same config content.
-      # Configure [common] plus the role-specific section(s).
-      # The active role is selected by matching the hostname to waker.name or sleeper.name.
-      # Only the APIs for the detected role will be exposed.
+Both machines can use the same config content. Configure ``[common]`` plus the role-specific section(s). The active role is selected by matching the hostname to ``waker.name`` or ``sleeper.name``.
+
+Start and enable the service:
+
+.. code-block:: bash
+
+   sudo systemctl start sleep-manager
+   sudo systemctl enable sleep-manager
 
 Manual Installation (Non-Debian Distros)
 ----------------------------------------
@@ -55,46 +54,42 @@ If you are not on Debian, follow the manual steps below.
 Manual Installation
 -------------------
 
-If you prefer to install manually or need to customize the installation:
+Install Python and system dependencies:
 
-1. **Install Python dependencies**:
-   .. code-block:: bash
+.. code-block:: bash
 
-      sudo apt update
-      sudo apt install python3 python3-venv python3-pip
+   sudo apt update
+   sudo apt install python3 python3-venv python3-pip etherwake ethtool
 
-2. **Create application directory**:
-   .. code-block:: bash
+Create the application user and directory:
 
-      sudo mkdir -p /usr/lib/sleep-manager
-      sudo useradd --system --user-group --shell /bin/false sleep-manager
+.. code-block:: bash
 
-3. **Copy application files**:
-   .. code-block:: bash
+   sudo mkdir -p /usr/lib/sleep-manager
+   sudo useradd --system --user-group --shell /bin/false sleep-manager
 
-      sudo cp -r . /usr/lib/sleep-manager/
-      sudo chown -R sleep-manager:sleep-manager /usr/lib/sleep-manager
+Copy application files:
 
-4. **Create virtual environment**:
-   .. code-block:: bash
+.. code-block:: bash
 
-      cd /usr/lib/sleep-manager
-      sudo -u sleep-manager python3 -m venv venv
-      sudo -u sleep-manager venv/bin/pip install -e .
+   sudo cp -r . /usr/lib/sleep-manager/
+   sudo chown -R sleep-manager:sleep-manager /usr/lib/sleep-manager
 
-5. **Install system dependencies**:
-   .. code-block:: bash
+Create a virtual environment and install:
 
-      sudo apt install etherwake ethtool
+.. code-block:: bash
 
-6. **Install systemd services**:
-   .. code-block:: bash
+   sudo -u sleep-manager python3 -m venv /usr/lib/sleep-manager/venv
+   sudo -u sleep-manager /usr/lib/sleep-manager/venv/bin/pip install -e /usr/lib/sleep-manager
 
-      sudo cp systemd/sleep-manager.service /etc/systemd/system/
-      sudo cp systemd/sleep-manager-delay.service /etc/systemd/system/
-      sudo systemctl daemon-reload
-      sudo systemctl enable sleep-manager
-      # Configure [common] plus the role-specific section(s).
+Install systemd services:
+
+.. code-block:: bash
+
+   sudo cp systemd/sleep-manager.service /etc/systemd/system/
+   sudo cp systemd/sleep-manager-delay.service /etc/systemd/system/
+   sudo systemctl daemon-reload
+   sudo systemctl enable sleep-manager
 
 Configuration
 -------------
@@ -147,47 +142,40 @@ Packaging (Build the .deb)
 
 If you need to build the Debian package locally:
 
-1. **Install build dependencies**:
-   .. code-block:: bash
+Install build dependencies:
 
-      sudo apt update
-      sudo apt install build-essential debhelper-compat rsync dpkg-dev python3-hatchling python3-hatch-vcs
+.. code-block:: bash
 
-2. **Build the package**:
-   .. code-block:: bash
+   sudo apt update
+   sudo apt install build-essential debhelper-compat rsync dpkg-dev python3-hatchling python3-hatch-vcs
 
-      ./scripts/build-deb.sh
+Build the package:
+
+.. code-block:: bash
+
+   ./scripts/build-deb.sh
 
 Troubleshooting
 --------------
 
-Common installation issues:
+Permission denied errors:
 
-1. **Permission denied errors**:
-   .. code-block:: bash
+.. code-block:: bash
 
-      sudo chown -R sleep-manager:sleep-manager /usr/lib/sleep-manager
+   sudo chown -R sleep-manager:sleep-manager /usr/lib/sleep-manager
 
-2. **Service won't start**:
-   .. code-block:: bash
+Service won't start:
 
-      sudo journalctl -u sleep-manager -n 50
+.. code-block:: bash
 
-3. **Python import errors**:
-   .. code-block:: bash
+   sudo journalctl -u sleep-manager -n 50
 
-      sudo -u sleep-manager /usr/lib/sleep-manager/venv/bin/pip install -e .
+Python import errors:
 
-For more troubleshooting help, see :doc:`troubleshooting`.
+.. code-block:: bash
 
-Next Steps
-----------
+   sudo -u sleep-manager /usr/lib/sleep-manager/venv/bin/pip install -e /usr/lib/sleep-manager
 
-After successful installation:
-
-1. Configure Wake-on-LAN in BIOS/UEFI (sleeper machine)
-2. Test the complete workflow
-3. Set up monitoring and logging
-4. Configure automated scripts
+For more help, see :doc:`troubleshooting`.
 
 For operational commands, verification, and troubleshooting, see :doc:`operations` and :doc:`troubleshooting`.
