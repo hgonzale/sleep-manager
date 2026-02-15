@@ -12,6 +12,7 @@
 #
 import os
 import sys
+from importlib.metadata import version as _pkg_version
 
 sys.path.insert(0, os.path.abspath(".."))
 
@@ -21,9 +22,9 @@ project = "Sleep Manager"
 copyright = "2024, Sleep Manager Team"
 author = "Sleep Manager Team"
 
-# The full version, including alpha/beta/rc tags
-release = "1.0.0"
-version = "1.0.0"
+# Version is derived from git tags via hatch-vcs.
+release = _pkg_version("sleep-manager")
+version = release
 
 # -- General configuration ---------------------------------------------------
 
