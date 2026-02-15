@@ -11,8 +11,8 @@
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
 import os
+import subprocess
 import sys
-from importlib.metadata import version as _pkg_version
 
 sys.path.insert(0, os.path.abspath(".."))
 
@@ -22,8 +22,16 @@ project = "Sleep Manager"
 copyright = "2024, Sleep Manager Team"
 author = "Sleep Manager Team"
 
-# Version is derived from git tags via hatch-vcs.
-release = _pkg_version("sleep-manager")
+# Derive version from the nearest git tag so docs always show the last release.
+try:
+    release = subprocess.check_output(
+        ["git", "describe", "--tags", "--abbrev=0"],
+        cwd=os.path.dirname(__file__),
+        stderr=subprocess.DEVNULL,
+        text=True,
+    ).strip()
+except Exception:
+    release = "unknown"
 version = release
 
 # -- General configuration ---------------------------------------------------
