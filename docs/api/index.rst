@@ -75,14 +75,6 @@ HTTP Status Codes
 |      | Unavailable     |
 +------+------------------+
 
-Core Endpoints
---------------
-
-.. toctree::
-   :maxdepth: 2
-
-   core
-
 Sleeper Endpoints
 -----------------
 
