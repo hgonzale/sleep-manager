@@ -66,6 +66,7 @@ Config keys:
 * ``waker_url``: Base URL of the waker. Required.
 * ``api_key``: The ``common.api_key`` value from the sleep-manager config. Required.
 * ``poll_interval``: How often (seconds) to poll ``/waker/status``. Default: ``30``.
+* ``waker_name``: Waker hostname used in the accessory serial number. Optional; defaults to the hostname parsed from ``waker_url``. Set this when Homebridge runs on the waker itself and ``waker_url`` uses ``localhost``.
 
 Troubleshooting
 ---------------

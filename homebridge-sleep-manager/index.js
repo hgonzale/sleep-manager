@@ -26,6 +26,7 @@ module.exports = (api) => {
  *   waker_url     - Base URL of the waker (e.g. "http://waker_url:51339")
  *   api_key       - X-API-Key for authentication
  *   poll_interval - Status poll interval in seconds (default: 30)
+ *   waker_name    - Waker hostname for the serial number (optional; defaults to hostname in waker_url)
  */
 class SleepManagerSwitch {
   constructor(log, config, api) {
@@ -43,7 +44,8 @@ class SleepManagerSwitch {
     this._on = false;
     this._fault = Characteristic.StatusFault.NO_FAULT;
 
-    const wakerHost = this.wakerUrl ? new URL(this.wakerUrl).hostname : "unknown";
+    const wakerHost = config.waker_name
+      || (this.wakerUrl ? new URL(this.wakerUrl).hostname : "unknown");
     const serialNumber = `${wakerHost}>${this.name}`;
 
     this._infoService = new Service.AccessoryInformation();
