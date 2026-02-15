@@ -17,10 +17,10 @@ The plugin polls ``GET /waker/status`` on the waker at a configurable interval a
    * - ``ON``
      - true
      - NO_FAULT
-   * - ``OFF``
-     - false
-     - NO_FAULT
    * - ``WAKING``
+     - true
+     - NO_FAULT
+   * - ``OFF``
      - false
      - NO_FAULT
    * - ``FAILED``
@@ -28,6 +28,8 @@ The plugin polls ``GET /waker/status`` on the waker at a configurable interval a
      - GENERAL_FAULT
 
 When you toggle the switch **on**, the plugin calls ``GET /waker/wake``. When you toggle it **off**, it calls ``GET /waker/suspend``. The switch state is driven entirely by polling — there is no push from the waker to Homebridge.
+
+The ``WAKING`` state maps to ``Switch.On = true`` so the Apple Home switch stays on while the sleeper is booting, avoiding a visible off→on flicker. The switch returns to off only if the wake attempt fails (``FAILED``) or the machine is explicitly suspended (``OFF``).
 
 The ``FAILED`` state (wake attempt timed out) surfaces as a warning icon in Apple Home via ``StatusFault``. Issuing a new wake command clears it.
 
@@ -73,6 +75,6 @@ Check that the waker is reachable and responding:
 .. code-block:: bash
 
    curl -H "X-API-Key: your-api-key" http://waker_url:51339/waker/status
-   # Expected: {"op": "status", "state": "OFF", "homekit": "off"}
+   # {"op": "status", "state": "OFF", "homekit": "off"}
 
 If the switch is stuck or shows a fault, check the Homebridge log for ``homebridge-sleep-manager`` entries and verify the waker service is running (see :doc:`troubleshooting`).

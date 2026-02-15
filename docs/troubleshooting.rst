@@ -51,7 +51,7 @@ The waker state machine can be inspected via ``GET /waker/status``:
 .. code-block:: bash
 
    curl -H "X-API-Key: your-api-key" http://waker_url:51339/waker/status
-   # {"op": "status", "state": "FAILED", "homekit": "off"}
+   # {"op": "status", "state": "FAILED", "homekit": "failed"}
 
 **FAILED state:** A wake attempt timed out. Issue a new ``/waker/wake`` to retry; the state will transition back to WAKING.
 

@@ -17,8 +17,8 @@ module.exports = (api) => {
  *
  * Maps state machine states to HomeKit:
  *   ON      → Switch.On = true,  StatusFault = NO_FAULT
+ *   WAKING  → Switch.On = true,  StatusFault = NO_FAULT
  *   OFF     → Switch.On = false, StatusFault = NO_FAULT
- *   WAKING  → Switch.On = false, StatusFault = NO_FAULT
  *   FAILED  → Switch.On = false, StatusFault = GENERAL_FAULT
  *
  * Config keys:
@@ -100,14 +100,14 @@ class SleepManagerSwitch {
       const wasOn = this._on;
       const wasFault = this._fault;
 
-      if (state === "ON") {
+      if (state === "ON" || state === "WAKING") {
         this._on = true;
         this._fault = Characteristic.StatusFault.NO_FAULT;
       } else if (state === "FAILED") {
         this._on = false;
         this._fault = Characteristic.StatusFault.GENERAL_FAULT;
       } else {
-        // OFF or WAKING
+        // OFF
         this._on = false;
         this._fault = Characteristic.StatusFault.NO_FAULT;
       }

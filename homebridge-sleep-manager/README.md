@@ -13,8 +13,8 @@ Custom Homebridge plugin for sleep-manager. Requires Homebridge ≥ 2.0.
 | State machine state | Switch.On | StatusFault    |
 |---------------------|-----------|----------------|
 | `ON`                | true      | NO_FAULT       |
+| `WAKING`            | true      | NO_FAULT       |
 | `OFF`               | false     | NO_FAULT       |
-| `WAKING`            | false     | NO_FAULT       |
 | `FAILED`            | false     | GENERAL_FAULT  |
 
 ## Installation

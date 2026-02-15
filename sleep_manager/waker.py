@@ -18,7 +18,7 @@ def _get_state_machine():
 
 
 def _homekit_value(state_value: str) -> str:
-    if state_value == "ON":
+    if state_value in ("ON", "WAKING"):
         return "on"
     elif state_value == "FAILED":
         return "failed"
@@ -221,8 +221,8 @@ def status() -> dict[str, Any]:
             }
 
     ``homekit`` values:
-        - ``"on"``     — state is ON
-        - ``"off"``    — state is OFF or WAKING
+        - ``"on"``     — state is ON or WAKING
+        - ``"off"``    — state is OFF
         - ``"failed"`` — state is FAILED
 
     **HTTP Status Codes**:
