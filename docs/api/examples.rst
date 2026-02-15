@@ -7,21 +7,25 @@ Using curl
 ----------
 
 Check health status:
+
 .. code-block:: bash
 
    curl http://sleeper_url:51339/health
 
 Get sleeper status:
+
 .. code-block:: bash
 
    curl -H "X-API-Key: your-api-key" http://sleeper_url:51339/sleeper/status
 
 Wake the sleeper:
+
 .. code-block:: bash
 
    curl -H "X-API-Key: your-api-key" http://waker_url:51339/waker/wake
 
 Suspend the sleeper:
+
 .. code-block:: bash
 
    curl -H "X-API-Key: your-api-key" http://waker_url:51339/waker/suspend
@@ -33,7 +37,6 @@ Using Python requests
 
    import requests
 
-   # Configuration
    API_KEY = "your-api-key"
    SLEEPER_URL = "http://sleeper_url:51339"
    WAKER_URL = "http://waker_url:51339"
@@ -89,26 +92,24 @@ Automated Scripts
 -----------------
 
 Night-time shutdown script:
+
 .. code-block:: bash
 
    #!/bin/bash
-   # Suspend at 10 PM
-   curl -H "X-API-Key: your-api-key" \
-        -X GET http://waker_url:51339/waker/suspend
+   curl -H "X-API-Key: your-api-key" http://waker_url:51339/waker/suspend
 
 Morning wake-up script:
+
 .. code-block:: bash
 
    #!/bin/bash
-   # Wake at 8 AM
-   curl -H "X-API-Key: your-api-key" \
-        -X GET http://waker_url:51339/waker/wake
+   curl -H "X-API-Key: your-api-key" http://waker_url:51339/waker/wake
 
 Status monitoring script:
+
 .. code-block:: bash
 
    #!/bin/bash
-   # Check waker state machine state
    STATE=$(curl -s -H "X-API-Key: your-api-key" \
                 http://waker_url:51339/waker/status | \
                 jq -r '.state')
@@ -125,6 +126,7 @@ Error Handling
 --------------
 
 Python example with error handling:
+
 .. code-block:: python
 
    import requests
@@ -142,9 +144,6 @@ Python example with error handling:
        except RequestException as e:
            print(f"Network error: {e}")
            return None
-       except Exception as e:
-           print(f"Unexpected error: {e}")
-           return None
 
    result = wake_sleeper()
    if result:
@@ -153,6 +152,7 @@ Python example with error handling:
        print("Failed to send wake command")
 
 JavaScript example with error handling:
+
 .. code-block:: javascript
 
    async function wakeSleeper() {
@@ -160,11 +160,9 @@ JavaScript example with error handling:
            const response = await fetch('http://waker_url:51339/waker/wake', {
                headers: { 'X-API-Key': 'your-api-key' }
            });
-           
            if (!response.ok) {
                throw new Error(`HTTP error! status: ${response.status}`);
            }
-           
            const data = await response.json();
            console.log('Wake command sent successfully:', data);
            return data;
@@ -174,4 +172,4 @@ JavaScript example with error handling:
        }
    }
 
-   wakeSleeper(); 
+   wakeSleeper();
