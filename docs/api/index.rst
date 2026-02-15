@@ -31,7 +31,8 @@ Response Format
 
 All API responses are in JSON format. Successful responses have HTTP status codes in the 200 range. Error responses include an ``error`` object with details about the failure.
 
-Success Response Format:
+Success response format:
+
 .. code-block:: json
 
    {
@@ -39,7 +40,8 @@ Success Response Format:
        "data": { ... }
    }
 
-Error Response Format:
+Error response format:
+
 .. code-block:: json
 
    {
