@@ -27,7 +27,7 @@ The following endpoints do not require authentication:
 * ``GET /health`` - Health check
 
 Response Format
---------------
+---------------
 
 All API responses are in JSON format. Successful responses have HTTP status codes in the 200 range. Error responses include an ``error`` object with details about the failure.
 
@@ -55,25 +55,14 @@ Error response format:
    }
 
 HTTP Status Codes
-----------------
+-----------------
 
-+------+------------------+
-| Code | Description     |
-+======+==================+
-| 200  | Success         |
-+------+------------------+
-| 401  | Unauthorized    |
-+------+------------------+
-| 404  | Not Found       |
-+------+------------------+
-| 408  | Request Timeout |
-+------+------------------+
-| 500  | Internal Server |
-|      | Error           |
-+------+------------------+
-| 503  | Service         |
-|      | Unavailable     |
-+------+------------------+
+* ``200`` — Success
+* ``401`` — Unauthorized (missing or invalid API key)
+* ``404`` — Not Found
+* ``408`` — Request Timeout (waker could not reach sleeper)
+* ``500`` — Internal Server Error
+* ``503`` — Service Unavailable
 
 Sleeper Endpoints
 -----------------
