@@ -108,15 +108,17 @@ Status monitoring script:
 .. code-block:: bash
 
    #!/bin/bash
-   # Check if sleeper is running
-   STATUS=$(curl -s -H "X-API-Key: your-api-key" \
+   # Check waker state machine state
+   STATE=$(curl -s -H "X-API-Key: your-api-key" \
                 http://waker_url:51339/waker/status | \
-                jq -r '.sleeper_response.json.status')
-   
-   if [ "$STATUS" = "running" ]; then
-       echo "Sleeper is running"
+                jq -r '.state')
+
+   if [ "$STATE" = "ON" ]; then
+       echo "Sleeper is on"
+   elif [ "$STATE" = "FAILED" ]; then
+       echo "Wake attempt failed"
    else
-       echo "Sleeper is not running"
+       echo "Sleeper is off (state: $STATE)"
    fi
 
 Error Handling

@@ -23,8 +23,13 @@ Status Endpoint
 
 .. autofunction:: sleep_manager.waker.status
 
+Heartbeat Endpoint
+------------------
+
+.. autofunction:: sleep_manager.waker.heartbeat
+
 Utility Functions
 -----------------
 
 .. autofunction:: sleep_manager.waker.waker_url
-.. autofunction:: sleep_manager.waker.sleeper_request 
+.. autofunction:: sleep_manager.waker.sleeper_request

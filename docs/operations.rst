@@ -29,11 +29,12 @@ API checks
    curl http://sleeper_url:51339/health
    curl http://waker_url:51339/health
 
-   # Sleeper status
+   # Sleeper status (sleeper machine)
    curl -H "X-API-Key: your-api-key" http://sleeper_url:51339/sleeper/status
 
-   # Waker status (proxy to sleeper)
+   # Waker status — returns state machine state, does not proxy to sleeper
    curl -H "X-API-Key: your-api-key" http://waker_url:51339/waker/status
+   # {"op": "status", "state": "ON", "homekit": "on"}
 
    # Wake the sleeper
    curl -H "X-API-Key: your-api-key" http://waker_url:51339/waker/wake
@@ -41,10 +42,28 @@ API checks
    # Suspend the sleeper via the waker
    curl -H "X-API-Key: your-api-key" http://waker_url:51339/waker/suspend
 
-   # Suspend + wake workflow
-   curl -H "X-API-Key: your-api-key" http://waker_url:51339/waker/suspend
-   sleep 10
-   curl -H "X-API-Key: your-api-key" http://waker_url:51339/waker/wake
+State machine
+-------------
+
+The waker maintains a state machine with four states:
+
+* ``OFF`` — sleeper is not running; no heartbeat received.
+* ``WAKING`` — a wake command was sent; waiting for heartbeat confirmation.
+* ``ON`` — sleeper is running; heartbeats are arriving.
+* ``FAILED`` — a wake attempt timed out (no heartbeat within ``wake_timeout`` seconds).
+
+State transitions:
+
+* ``OFF`` → ``WAKING``: wake command received.
+* ``WAKING`` → ``ON``: heartbeat received within ``wake_timeout``.
+* ``WAKING`` → ``FAILED``: no heartbeat within ``wake_timeout``.
+* ``ON`` → ``OFF``: suspend command acknowledged, or ``heartbeat_miss_threshold`` consecutive heartbeats missed.
+* ``FAILED`` → ``WAKING``: a new wake command is issued.
+
+Heartbeat flow
+--------------
+
+The sleeper sends a ``POST /waker/heartbeat`` every ``heartbeat_interval`` seconds (default 60s). After a suspend is requested, heartbeats are suppressed for ``2 × heartbeat_interval`` seconds to prevent the waker from immediately returning to OFF and then re-waking the machine.
 
 Backups
 -------

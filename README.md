@@ -1,56 +1,30 @@
 # Sleep Manager
 
-Sleep Manager is a Flask app for managing sleep/wake cycles between two machines on the same LAN. A **waker** sends Wake-on-LAN packets, and a **sleeper** suspends itself on demand.
-Both machines can use the same config content; the active role is derived from the machine hostname matching `waker.name` or `sleeper.name`. Only the APIs for that role are exposed. Shared settings live under `[common]`; waker machines need `[waker]` plus the sleeper name/MAC in `[sleeper]`, and sleeper machines need `[sleeper]`.
+Sleep Manager controls sleep/wake cycles between two machines on the same LAN. A **waker** sends Wake-on-LAN packets; a **sleeper** suspends itself on demand. Both run the same Flask app — the active role is inferred from the hostname matching `waker.name` or `sleeper.name` in config.
 
 ## Requirements
 
 - Python 3.11+
-- Two Linux machines on the same local network
-- systemd on both machines
+- Two Linux machines with systemd on the same LAN
 - Wake-on-LAN capable NIC on the sleeper
-- `etherwake` installed
-- `ethtool` installed
-- sudo access on both machines
+- `etherwake` and `ethtool` installed on the waker
 
 ## Install (Debian)
 
-### Debian Package
+Download the latest `.deb` from GitHub Releases:
 
 ```bash
 sudo dpkg -i sleep-manager_*.deb
 ```
 
-Download the latest `.deb` from GitHub Releases.
-
-## Install (Other Linux Distros)
-
-See [docs/installation.rst](docs/installation.rst) for manual installation steps.
-
-## Key Configuration
-
-Config file path (default): `/etc/sleep-manager/sleep-manager-config.toml`
-
-Most important settings:
-
-- `common.api_key`: shared secret for all authenticated endpoints
-- `common.domain` and `common.port`: used to construct URLs for inter-machine calls
-- `sleeper.name`: hostname used for sleeper API URLs (also required on the waker)
-- `sleeper.mac_address`: MAC address used for Wake-on-LAN (required on the waker)
-- `waker.name`: hostname used for waker API URLs
-- `waker.wol_exec`: path to `etherwake`
-
-See the example config in `config/sleep-manager-config.toml.example` (it includes comments about which sections each machine needs).
-
 ## Documentation
 
-Full installation, configuration, operations, troubleshooting, and API docs are available at [https://hgonzale.github.io/sleep-manager/](https://hgonzale.github.io/sleep-manager/).
+Full installation, configuration, operations, troubleshooting, and API docs: [https://hgonzale.github.io/sleep-manager/](https://hgonzale.github.io/sleep-manager/)
 
 ## HomeKit Integration
 
-See `homebridge-sleep-manager/` for HomeKit integration using the
-[`homebridge-http-switch` plugin](https://github.com/homebridge-plugins/homebridge-http-switch).
+See [`homebridge-sleep-manager/`](homebridge-sleep-manager/README.md) for the custom Homebridge plugin (Homebridge ≥ 2.0).
 
 ## License
 
-BSD 2-clause License - see LICENSE file for details.
+BSD 2-clause — see LICENSE.

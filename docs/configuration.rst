@@ -62,6 +62,15 @@ Sleeper settings (``sleeper``)
 * ``suspend_verb``: Verb passed to systemctl to suspend.
 * ``status_verb``: Verb passed to systemctl to read status.
 
+Heartbeat and timeout settings (``common``, optional)
+------------------------------------------------------
+
+These keys are optional and have built-in defaults.
+
+* ``heartbeat_interval`` (default ``60``): Seconds between heartbeats the sleeper sends to the waker. After a suspend is requested, heartbeats are suppressed for ``2 × heartbeat_interval`` seconds to prevent the waker state machine from bouncing back to OFF immediately.
+* ``wake_timeout`` (default ``120``): Seconds the waker waits in the WAKING state before marking the wake attempt as FAILED.
+* ``heartbeat_miss_threshold`` (default ``3``): Number of consecutive missed heartbeats before the waker transitions to OFF.
+
 Role selection
 --------------
 
