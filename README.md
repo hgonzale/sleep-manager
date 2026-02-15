@@ -25,7 +25,7 @@ Download the latest `.deb` from GitHub Releases.
 
 ## Install (Other Linux Distros)
 
-Follow the manual installation steps in the docs: `docs/installation.rst`.
+See [docs/installation.rst](docs/installation.rst) for manual installation steps.
 
 ## Key Configuration
 

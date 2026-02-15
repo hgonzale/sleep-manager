@@ -140,7 +140,7 @@ Wake-on-LAN setup (sleeper)
 2. Enable Wake-on-LAN (may be labeled "Power on by PCI-E").
 3. Save and reboot.
 
-The setup script configures the NIC for WoL, but BIOS/UEFI support must be enabled manually.
+You can enable WoL on the interface via ``nmcli connection modify <name> 802-3-ethernet.wake-on-lan magic`` (NetworkManager) or ``ethtool -s <iface> wol g`` (manually). BIOS/UEFI support must also be enabled.
 
 Packaging (Build the .deb)
 --------------------------
