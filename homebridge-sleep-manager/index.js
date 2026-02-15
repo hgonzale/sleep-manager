@@ -43,6 +43,16 @@ class SleepManagerSwitch {
     this._on = false;
     this._fault = Characteristic.StatusFault.NO_FAULT;
 
+    const wakerHost = this.wakerUrl ? new URL(this.wakerUrl).hostname : "unknown";
+    const serialNumber = `${wakerHost}>${this.name}`;
+
+    this._infoService = new Service.AccessoryInformation();
+    this._infoService
+      .setCharacteristic(Characteristic.Manufacturer, "sleep-manager")
+      .setCharacteristic(Characteristic.Model, "SleepManagerSwitch")
+      .setCharacteristic(Characteristic.SerialNumber, serialNumber)
+      .setCharacteristic(Characteristic.FirmwareRevision, require("./package.json").version);
+
     this._service = new Service.Switch(this.name);
 
     this._service
@@ -60,7 +70,7 @@ class SleepManagerSwitch {
   }
 
   getServices() {
-    return [this._service];
+    return [this._infoService, this._service];
   }
 
   // -------------------------------------------------------------------------
