@@ -60,12 +60,14 @@ class SleeperStateMachine:
             return self.state
 
     def suspend_requested(self) -> SleeperState:
-        """Record suspend intent; inhibit heartbeats for 2 intervals to prevent bounce-back."""
+        """Immediately transition to OFF and inhibit heartbeats for 2 intervals to prevent bounce-back."""
         with self._lock:
+            prev_state = self.state
+            self.state = SleeperState.OFF
             self.suspend_requested_at = self._time()
             logger.info(
-                "Suspend requested in state %s — inhibiting heartbeats for %.0fs",
-                self.state.value,
+                "Suspend requested in state %s — transitioning to OFF, inhibiting heartbeats for %.0fs",
+                prev_state.value,
                 2 * self.heartbeat_interval,
             )
             return self.state
