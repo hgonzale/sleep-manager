@@ -311,6 +311,8 @@ def _start_heartbeat_sender(app: Flask) -> threading.Thread:
                     )
                 else:
                     logger.debug("Heartbeat sent, waker replied: %s", resp_data)
+            except requests.exceptions.RequestException:
+                logger.debug("Heartbeat to %s skipped (network unavailable, will retry)", url)
             except Exception:
                 logger.warning("Heartbeat POST to %s failed (will retry next cycle)", url, exc_info=True)
 

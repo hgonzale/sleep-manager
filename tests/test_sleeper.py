@@ -2,6 +2,7 @@ import threading
 from unittest.mock import MagicMock, patch
 
 import pytest
+import requests
 from flask import Flask
 from flask.testing import FlaskClient
 
@@ -261,6 +262,53 @@ class TestHeartbeatSender:
         assert any("Config mismatch" in m for m in log_messages), (
             f"Expected config mismatch error log, got: {log_messages}"
         )
+
+    @patch("sleep_manager.sleeper.requests.post")
+    def test_heartbeat_sender_connection_error_logs_debug_not_warning(
+        self, mock_post: MagicMock, make_config
+    ) -> None:
+        """Test that a network-level failure logs at DEBUG, not WARNING."""
+        import logging
+        make_config("sleeper")
+
+        event = threading.Event()
+        log_records: list[logging.LogRecord] = []
+
+        class _Capture(logging.Handler):
+            def emit(self, record):
+                log_records.append(record)
+                if "skipped" in record.getMessage():
+                    event.set()
+
+        handler = _Capture()
+        handler.setLevel(logging.DEBUG)
+        sleeper_logger = logging.getLogger("sleep_manager.sleeper")
+        old_level = sleeper_logger.level
+        sleeper_logger.setLevel(logging.DEBUG)
+        sleeper_logger.addHandler(handler)
+
+        def fake_post(url, **kwargs):
+            raise requests.exceptions.ConnectionError("Network unreachable")
+
+        mock_post.side_effect = fake_post
+
+        try:
+            with patch("sleep_manager.sleeper.time.sleep", return_value=None):
+                from sleep_manager.sleeper import _start_heartbeat_sender
+                flask_app = self._make_heartbeat_app()
+
+                _start_heartbeat_sender(flask_app)
+                event.wait(timeout=2.0)
+        finally:
+            sleeper_logger.removeHandler(handler)
+            sleeper_logger.setLevel(old_level)
+
+        assert not any(r.levelno >= logging.WARNING for r in log_records), (
+            f"Expected no WARNING/ERROR, got: {[(r.levelname, r.getMessage()) for r in log_records]}"
+        )
+        assert any(
+            r.levelno == logging.DEBUG and "skipped" in r.getMessage() for r in log_records
+        ), f"Expected DEBUG 'skipped' log, got: {[(r.levelname, r.getMessage()) for r in log_records]}"
 
     def test_config_includes_config_checksum(self, client: FlaskClient) -> None:
         """GET /sleeper/config includes config_checksum field."""
