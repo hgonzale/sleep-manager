@@ -8,10 +8,14 @@ Type=simple
 User=sleep-manager
 Group=sleep-manager
 WorkingDirectory=/usr/lib/sleep-manager
-# Use the Flask app factory pattern
-Environment=FLASK_APP=sleep_manager:create_app
-Environment=FLASK_ENV=production
-ExecStart=/usr/lib/sleep-manager/venv/bin/python -m flask run --host=0.0.0.0 --port=51339
+RuntimeDirectory=sleep-manager
+RuntimeDirectoryMode=0750
+ExecStart=/usr/lib/sleep-manager/venv/bin/gunicorn \
+    --bind unix:/run/sleep-manager/sleep-manager.sock \
+    --workers 2 \
+    --timeout 30 \
+    --access-logfile - \
+    "sleep_manager:create_app()"
 Restart=always
 RestartSec=10
 StandardOutput=journal
@@ -23,7 +27,7 @@ TimeoutStopSec=10
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/usr/lib/sleep-manager
+ReadWritePaths=/usr/lib/sleep-manager /run/sleep-manager
 
 [Install]
 WantedBy=multi-user.target

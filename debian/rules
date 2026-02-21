@@ -22,7 +22,7 @@ override_dh_auto_install:
 	  --exclude 'config' \
 	  --exclude 'docs' \
 	  --exclude '.claude' \
-	  --exclude 'systemd' \
+	  --exclude 'systemd/' \
 	  --exclude 'tests' \
 	  --exclude 'tox.ini' \
 	  --exclude 'uv.lock' \
@@ -44,10 +44,22 @@ override_dh_auto_install:
 	    debian/sleep-manager/etc/sleep-manager/sleep-manager-config.toml; \
 	fi
 
+	# Systemd units
+	mkdir -p debian/sleep-manager/lib/systemd/system
+	install -m 0644 systemd/sleep-manager.service \
+	  debian/sleep-manager/lib/systemd/system/sleep-manager.service
+	install -m 0644 systemd/sleep-manager-delay.service \
+	  debian/sleep-manager/lib/systemd/system/sleep-manager-delay.service
+
 	# Config migration helper
 	mkdir -p debian/sleep-manager/usr/lib/sleep-manager/scripts
 	install -m 0755 scripts/migrate_config.py \
 	  debian/sleep-manager/usr/lib/sleep-manager/scripts/migrate_config.py
+
+	# nginx site config
+	mkdir -p debian/sleep-manager/etc/nginx/sites-available
+	install -m 0644 nginx/sleep-manager \
+	  debian/sleep-manager/etc/nginx/sites-available/sleep-manager
 
 override_dh_fixperms:
 	dh_fixperms

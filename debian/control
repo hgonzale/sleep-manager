@@ -9,7 +9,7 @@ Homepage: https://hgonzale.github.io/sleep-manager/
 
 Package: sleep-manager
 Architecture: all
-Depends: python3 (>= 3.11), python3-venv, python3-pip, sudo, systemd, etherwake, ethtool, ucf
+Depends: python3 (>= 3.11), python3-venv, python3-pip, sudo, systemd, etherwake, ethtool, ucf, nginx | nginx-full | nginx-light | nginx-extras
 Suggests: nodejs
 Description: Two-machine sleep/wake control over HTTP
  Sleep Manager provides sleeper and waker roles in a single Flask service

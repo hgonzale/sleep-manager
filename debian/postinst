@@ -168,6 +168,21 @@ if [ "$needs_reenable" -eq 1 ]; then
         fi
     done
 fi
+
+# Clean up unit files from old rsync-installed location
+rm -f /usr/lib/sleep-manager/systemd/sleep-manager.service
+rm -f /usr/lib/sleep-manager/systemd/sleep-manager-delay.service
+
 systemctl daemon-reload >/dev/null 2>&1 || true
+
+# Enable nginx site
+SITES_ENABLED=/etc/nginx/sites-enabled
+SITES_AVAILABLE=/etc/nginx/sites-available
+if [ ! -L "$SITES_ENABLED/sleep-manager" ]; then
+    ln -s "$SITES_AVAILABLE/sleep-manager" "$SITES_ENABLED/sleep-manager"
+fi
+if nginx -t -q 2>/dev/null && systemctl is-active --quiet nginx; then
+    systemctl reload nginx
+fi
 
 exit 0

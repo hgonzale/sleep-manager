@@ -27,6 +27,7 @@ classifiers = [
 
 dependencies = [
     "flask>=2.3.0",
+    "gunicorn>=22.0.0",
     "requests>=2.31.0",
 ]
 
