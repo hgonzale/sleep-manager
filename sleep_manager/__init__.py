@@ -16,7 +16,7 @@ from .state_machine import SleeperStateMachine
 from .waker import waker_bp
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(level=logging.INFO, format="%(name)s - %(levelname)s - %(message)s", force=True)
 logger = logging.getLogger(__name__)
 
 
