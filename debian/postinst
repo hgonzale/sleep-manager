@@ -146,9 +146,10 @@ fi
 
 chown -R sleep-manager:sleep-manager /usr/lib/sleep-manager/venv
 
-/usr/lib/sleep-manager/venv/bin/pip install --upgrade pip setuptools wheel
+/usr/lib/sleep-manager/venv/bin/pip install --upgrade pip
+/usr/lib/sleep-manager/venv/bin/pip install --no-deps -r /usr/lib/sleep-manager/requirements.txt
 /usr/lib/sleep-manager/venv/bin/pip install --upgrade hatchling hatch-vcs
-/usr/lib/sleep-manager/venv/bin/pip install --upgrade --no-build-isolation /usr/lib/sleep-manager
+/usr/lib/sleep-manager/venv/bin/pip install --no-deps --no-build-isolation /usr/lib/sleep-manager
 
 # Install Homebridge plugin if npm is available (Homebridge is optional)
 plugin_src="/usr/lib/sleep-manager/homebridge-sleep-manager"

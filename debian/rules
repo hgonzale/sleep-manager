@@ -26,6 +26,7 @@ override_dh_auto_install:
 	  --exclude 'tests' \
 	  --exclude 'tox.ini' \
 	  --exclude 'uv.lock' \
+	  --exclude 'nginx/' \
 	  --exclude '__pycache__' \
 	  --exclude '*.pyc' \
 	  --exclude 'debian' \
