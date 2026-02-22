@@ -1,48 +1,63 @@
 # Sleep Manager Agent Notes
 
-## Project snapshot
+## Project overview
 
-- **Purpose:** Two-machine sleep/wake control over HTTP on a trusted LAN (sleeper + waker).
-- **Runtime:** Flask app with two blueprints (`/sleeper/*` and `/waker/*`) plus `"/"` and `"/health"` endpoints.
-- **System integration:** Sleeper invokes `systemctl` for suspend/status; waker invokes `etherwake` for WoL.
+Two-machine sleep/wake control over HTTP on a trusted LAN. One machine is the **waker** (always on), the other is the **sleeper** (can be suspended). Both run the same Flask app; only one blueprint (`waker_bp` or `sleeper_bp`) is registered per process, determined at startup by role resolution.
 
-## Design decisions (why things are shaped this way)
+## Role resolution
 
-- **Single service, role-based behavior:** Both roles share one Flask app and config; which role is active is inferred from config keys. This keeps deployment symmetric across machines.
-- **Explicit API key gate:** All operational endpoints require `X-API-Key` via a shared decorator; only `"/"` and `"/health"` are unauthenticated for diagnostics.
-- **Config-driven runtime:** Config is loaded from `SLEEP_MANAGER_CONFIG_PATH` when set, otherwise `/usr/local/sleep-manager/config/sleep-manager-config.json`, with a repo example fallback to help local dev.
-- **System safety:** Suspend is triggered via `systemctl` with a short race-aware delay (handled by systemd pre-suspend service configured by scripts), keeping the HTTP response reliable.
-- **Network resilience:** Waker-to-sleeper calls wrap `requests.get` with timeouts and structured error responses to handle sleep/offline states cleanly.
-- **Central error handling:** Custom error classes with a shared Flask error handler return consistent JSON error payloads.
+Role is determined by matching the current hostname (and FQDN) against `[waker].name` / `[sleeper].name` in the config. A `ConfigurationError` is raised if the hostname matches neither or both. See `__init__.py:_resolve_role`.
 
-## Logging safety (what must not be logged)
+## Configuration
 
-- **Secrets:** Never log `API_KEY`, auth headers, or full request headers.
-- **Identifiers:** Avoid logging full MAC addresses; redact them if needed.
-- **Sensitive payloads:** Do not log full config files or exception messages that can reveal secrets or paths.
-- **Exception handling:** Avoid returning raw exception strings (`str(e)`) to clients or logging them in structured responses; log exceptions server-side and return generic errors.
+- **Format:** TOML, loaded with `tomllib`
+- **Path resolution:** `SLEEP_MANAGER_CONFIG_PATH` env var → `/etc/sleep-manager/sleep-manager-config.toml` → repo example fallback
+- **Sections:** `[common]`, `[waker]`, `[sleeper]` (keys are lowercased at load time)
+- **Required common key:** `api_key`
+- **Optional common keys (have defaults):** `heartbeat_interval` (60s), `wake_timeout` (120s), `heartbeat_miss_threshold` (3)
+- Both machines can share the same config file; role is resolved from the hostname at runtime.
 
-## Configuration essentials
+## State machine (waker role only)
 
-- **Keys:** `SLEEPER`, `WAKER`, `API_KEY`, `DOMAIN`, `PORT`, `DEFAULT_REQUEST_TIMEOUT`.
-- **Default port:** 51339 (documented in the README/quick reference).
+`SleeperStateMachine` (`sleep_manager/state_machine.py`) tracks sleeper reachability on the waker:
 
-## Testing segmentation
+- States: `OFF → WAKING → ON`, `FAILED` if wake times out
+- Transitions: `wake_requested()`, `heartbeat_received()`, `suspend_requested()`, `check_timeouts()`
+- `check_timeouts()` is called every 10s by a daemon thread started in `create_app()`
+- Stored at `app.extensions["state_machine"]`
+- `_time_fn` is injectable for testing (pass `lambda: clock[0]` with a mutable list)
 
-- **Unit tests:** Marked with `@pytest.mark.unit` in `tests/test_sleeper.py` and `tests/test_waker.py`. These mock subprocess/network calls.
-- **Integration tests:** Marked with `@pytest.mark.integration` in `tests/test_integration.py`. These exercise full Flask flows with mocked system/network boundaries.
-- **How to run:**
-  - `uv run tox -e test` (runs the full test suite)
-  - `uv run pytest -m unit`
-  - `uv run pytest -m integration`
+## Heartbeat protocol
 
-## Release notes
+The sleeper POSTs to `POST /waker/heartbeat` every `heartbeat_interval` seconds via a background thread started by `_start_heartbeat_sender(app)`. After `suspend_requested()`, the waker suppresses incoming heartbeats for `2 × heartbeat_interval` to prevent bounce-back to ON state.
 
-Keep release notes short and to the point. No lectures, no filler, no marketing language. A sentence or two per change is enough.
+## Authentication
 
-## Tooling expectations
+All operational endpoints require `X-API-Key` matching `common.api_key`. Only `GET /` and `GET /health` are unauthenticated.
 
-- **Python:** 3.11+
-- **Lint:** Ruff
-- **Type check:** Ty
-- **Docs:** Sphinx via `tox -e docs`
+## Logging safety
+
+- Never log `api_key`, `X-API-Key` header, or full request headers.
+- Redact MAC addresses if they appear in log output.
+- Do not log full config contents or raw exception messages that could reveal secrets or paths.
+- Return generic error messages to clients; log detail server-side only.
+
+## Testing
+
+- Tests use the `make_config` fixture (`tests/conftest.py`), which writes a temp TOML and sets `SLEEP_MANAGER_CONFIG_PATH`. Any new config keys must be added to the template inside `_write_config`.
+- `app.extensions["state_machine"]` is accessible in tests for state inspection/manipulation.
+- Unit tests: `@pytest.mark.unit` in `test_sleeper.py`, `test_waker.py`, and others.
+- Integration tests: `@pytest.mark.integration` in `test_integration.py`.
+- Run all: `uv run tox -e test` | unit only: `uv run pytest -m unit`
+- Coverage threshold: 85%
+
+## Commit messages and release notes
+
+Short and factual. One to two sentences per change. No filler or marketing language.
+
+## Tooling
+
+- Python 3.11+, uv
+- Lint: Ruff (`tox -e lint`)
+- Type check: Ty (`tox -e typecheck`)
+- Docs: Sphinx (`tox -e docs`)
