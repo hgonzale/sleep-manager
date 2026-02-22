@@ -43,6 +43,7 @@ class SleepManagerSwitch {
     // Cached state
     this._on = false;
     this._fault = Characteristic.StatusFault.NO_FAULT;
+    this._pollFailures = 0;
 
     const wakerHost = config.waker_name
       || (this.wakerUrl ? new URL(this.wakerUrl).hostname : "unknown");
@@ -106,8 +107,18 @@ class SleepManagerSwitch {
   async _pollStatus() {
     try {
       const body = await this._request("GET", "/waker/status");
-      const data = JSON.parse(body);
+      let data;
+      try {
+        data = JSON.parse(body);
+      } catch {
+        throw new Error("invalid JSON in response");
+      }
       const state = data.state;
+
+      if (this._pollFailures > 0) {
+        this.log.info("homebridge-sleep-manager: poll recovered after %d failure(s)", this._pollFailures);
+      }
+      this._pollFailures = 0;
 
       const wasOn = this._on;
       const wasFault = this._fault;
@@ -133,7 +144,12 @@ class SleepManagerSwitch {
 
       this.log.debug("Polled status: state=%s on=%s fault=%s", state, this._on, this._fault);
     } catch (err) {
-      this.log.warn("homebridge-sleep-manager: poll failed —", err.message);
+      this._pollFailures++;
+      if (this._pollFailures === 1) {
+        this.log.warn("homebridge-sleep-manager: poll failed — %s", err.message || err);
+      } else {
+        this.log.debug("homebridge-sleep-manager: poll still failing (%d) — %s", this._pollFailures, err.message || err);
+      }
     }
   }
 
@@ -161,7 +177,13 @@ class SleepManagerSwitch {
       const req = transport.request(options, (res) => {
         let raw = "";
         res.on("data", (chunk) => { raw += chunk; });
-        res.on("end", () => resolve(raw));
+        res.on("end", () => {
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            resolve(raw);
+          } else {
+            reject(new Error(`HTTP ${res.statusCode}`));
+          }
+        });
       });
 
       req.on("timeout", () => { req.destroy(new Error("Request timed out")); });
