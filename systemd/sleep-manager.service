@@ -14,7 +14,6 @@ ExecStart=/usr/lib/sleep-manager/venv/bin/gunicorn \
     --bind unix:/run/sleep-manager/sleep-manager.sock \
     --workers 2 \
     --timeout 30 \
-    --access-logfile - \
     "sleep_manager:create_app()"
 Restart=always
 RestartSec=10
