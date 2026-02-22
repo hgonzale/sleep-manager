@@ -102,6 +102,7 @@ addopts = [
 markers = [
     "unit: Unit tests",
     "integration: Integration tests",
+    "gunicorn: Gunicorn smoke tests",
     "slow: Slow running tests",
 ]
 
