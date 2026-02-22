@@ -1,6 +1,5 @@
 # Sleep Manager configuration (TOML)
-# Both machines should use the same config content.
-# The only difference should be the machine hostname matching waker.name or sleeper.name.
+# Both machines use the same config file.
 
 [common]
 domain = "localdomain"
