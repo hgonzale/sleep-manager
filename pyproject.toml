@@ -99,6 +99,9 @@ addopts = [
     "--cov=sleep_manager",
     "--cov-fail-under=85",
 ]
+filterwarnings = [
+    "ignore:urllib3.*doesn't match a supported version:Warning",
+]
 markers = [
     "unit: Unit tests",
     "integration: Integration tests",

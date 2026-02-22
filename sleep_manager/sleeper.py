@@ -41,7 +41,7 @@ def print_config() -> dict[str, Any]:
     if isinstance(common, dict) and "api_key" in common:
         common["api_key"] = "***hidden***"
     # Recursively sanitize
-    result = sanitize(config)  # type: ignore
+    result = sanitize(config)
     result["config_checksum"] = current_app.extensions["config_checksum"]
     return result
 
