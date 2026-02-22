@@ -36,6 +36,10 @@
   - `uv run pytest -m unit`
   - `uv run pytest -m integration`
 
+## Release notes
+
+Keep release notes short and to the point. No lectures, no filler, no marketing language. A sentence or two per change is enough.
+
 ## Tooling expectations
 
 - **Python:** 3.11+
