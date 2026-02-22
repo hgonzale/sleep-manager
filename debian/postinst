@@ -185,4 +185,4 @@ if nginx -t -q 2>/dev/null && systemctl is-active --quiet nginx; then
     systemctl reload nginx
 fi
 
-exit 0
+#DEBHELPER#
