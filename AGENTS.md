@@ -49,6 +49,7 @@ All operational endpoints require `X-API-Key` matching `common.api_key`. Only `G
 - Unit tests: `@pytest.mark.unit` in `test_sleeper.py`, `test_waker.py`, and others.
 - Integration tests: `@pytest.mark.integration` in `test_integration.py`.
 - Run all: `uv run tox -e test` | unit only: `uv run pytest -m unit`
+- After changing dependencies in `pyproject.toml`, regenerate `uv.lock` and `requirements.txt` with `uv run tox -e deps` (do not run `uv lock` directly)
 - Coverage threshold: 85%
 
 ## Commit messages and release notes
