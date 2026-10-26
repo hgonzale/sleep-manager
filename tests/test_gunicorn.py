@@ -12,6 +12,7 @@ import sys
 import tempfile
 import time
 from pathlib import Path
+from typing import TextIO
 
 import pytest
 
@@ -73,7 +74,7 @@ def gunicorn_server(tmp_path: Path):
     Yields a callable start(role) -> (sock_path, proc, log_path).
     Cleans up any started processes on teardown.
     """
-    started: list[tuple[subprocess.Popen, object]] = []
+    started: list[tuple[subprocess.Popen[bytes], TextIO]] = []
     # AF_UNIX path limit is 104 chars on macOS, 108 on Linux.
     # pytest's tmp_path under macOS exceeds this, so use a short dir under /tmp.
     sock_dir = Path(tempfile.mkdtemp(prefix="sm-", dir="/tmp"))
@@ -126,7 +127,7 @@ def gunicorn_server(tmp_path: Path):
     yield _start
 
     for proc, log_fh in started:
-        log_fh.flush()  # type: ignore[attr-defined]
+        log_fh.flush()
         if proc.poll() is None:
             proc.terminate()
             try:
@@ -134,7 +135,7 @@ def gunicorn_server(tmp_path: Path):
             except subprocess.TimeoutExpired:
                 proc.kill()
                 proc.wait()
-        log_fh.close()  # type: ignore[attr-defined]
+        log_fh.close()
     for d in sock_dirs:
         shutil.rmtree(d, ignore_errors=True)
 
