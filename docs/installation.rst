@@ -13,11 +13,14 @@ Prerequisites
 Debian Package Installation
 ---------------------------
 
-Download the latest `.deb` from GitHub Releases and install it:
+Add the `honkeandpastrami apt repository <https://github.com/honkeandpastrami/debian-repo>`_ and install; ``apt upgrade`` picks up new releases:
 
 .. code-block:: bash
 
-   sudo dpkg -i sleep-manager_*.deb
+   sudo curl -fsSLo /etc/apt/keyrings/honkeandpastrami.pgp https://honkeandpastrami.github.io/debian-repo/honkeandpastrami.pgp
+   printf 'Types: deb\nURIs: https://honkeandpastrami.github.io/debian-repo\nSuites: stable\nComponents: main\nSigned-By: /etc/apt/keyrings/honkeandpastrami.pgp\n' \
+     | sudo tee /etc/apt/sources.list.d/honkeandpastrami.sources
+   sudo apt update && sudo apt install sleep-manager
 
 Edit the config file (see :doc:`configuration` for all options):
 
